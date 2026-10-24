@@ -84,7 +84,8 @@ public sealed class SupportModule : IModule
         ],
         SubscribedEvents = [],
         // 服务任务（无调度按需提交，S18/D22 任务化红线）：定义落 job_definitions（CRON 空、NextRunAt 恒 null），
-        // 调度扫描永不命中，仅经 IJobScheduler.SubmitAsync 按声明模式执行；桩任务（chunk.assemble/format.convert）待文件中心批次，暂不声明
+        // 调度扫描永不命中，仅经 IJobScheduler.SubmitAsync 按声明模式执行；分片组装/格式转换处理器已落地（R-7），
+        // 待分片上传端点接入后再声明，避免产生无法触达的幽灵定义
         ServiceJobs =
         [
             new ServiceJobDefinition(FileTaskCodes.Upload, "文件上传", typeof(FileUploadHandler).FullName!),

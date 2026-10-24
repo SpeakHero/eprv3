@@ -65,9 +65,9 @@ public sealed class SupportModuleServiceJobsTests
     }
 
     [Fact]
-    public void StubTasksAreNotDeclaredAsServiceJobs()
+    public void ChunkAndConvertHandlersAreNotDeclaredUntilEndpointLands()
     {
-        // chunk.assemble / format.convert 为待文件中心批次的桩处理器，暂不声明避免幽灵定义
+        // R-7 已实现分片组装/格式转换处理器，但分片上传端点尚未接入，暂不声明避免幽灵定义
         var manifest = new SupportModule().Manifest;
         var codes = manifest.ServiceJobs.Select(static j => j.JobCode).ToHashSet(StringComparer.Ordinal);
 

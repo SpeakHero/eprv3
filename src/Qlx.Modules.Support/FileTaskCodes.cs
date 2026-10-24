@@ -87,6 +87,21 @@ public static class FileJobParams
     /// <summary>存储键（按存储键定位场景）。</summary>
     public const string StorageKey = "storageKey";
 
+    /// <summary>内容 SHA-256 哈希（分片组装完整性校验）。</summary>
+    public const string Hash = "hash";
+
+    /// <summary>分片存储键集合（按上传顺序；大文件分片组装入参）。</summary>
+    public const string ChunkKeys = "chunkKeys";
+
+    /// <summary>业务域编码（分片组装落库时使用，缺省未归类域）。</summary>
+    public const string BizDomain = "bizDomain";
+
+    /// <summary>目标物化路径（缺省 <c>/{bizDomain}/{fileName}</c>）。</summary>
+    public const string TargetPath = "targetPath";
+
+    /// <summary>目标格式（格式转换，如 png/jpg/webp）。</summary>
+    public const string TargetFormat = "targetFormat";
+
     /// <summary>待检查权限位（int）。</summary>
     public const string Permission = "permission";
 
