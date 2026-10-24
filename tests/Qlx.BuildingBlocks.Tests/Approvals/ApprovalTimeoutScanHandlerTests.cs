@@ -4,7 +4,7 @@
  * 版本：1.0.0 beta
  * 创建时间：2026-10-23 11:20:00 +08:00 中国标准时间 星期五
  * 描述：审批超时扫描任务测试（R8）——到期催办 + 节流跳过、催办上限上报上级（ESCALATE 留痕）、
- *       上级解析不到发预警继续催办
+ *       上级解析不到发预警继续催办；R-8 增补参数表阈值覆盖与缺失回落 config 两条路径
  */
 
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +14,7 @@ using Microsoft.Extensions.Options;
 using Qlx.Abstractions.Approvals;
 using Qlx.Abstractions.Jobs;
 using Qlx.Abstractions.Messages;
+using Qlx.Abstractions.Modules;
 using Qlx.BuildingBlocks.Tests.Files;
 using Qlx.BuildingBlocks.Tests.Jobs;
 using Qlx.Modules.Support;
@@ -74,9 +75,21 @@ public sealed class ApprovalTimeoutScanHandlerTests
             => Task.FromResult<IReadOnlyList<string>>(resolve ? [Leader] : []);
     }
 
+    /// <summary>系统参数桩：字典内参数覆盖 fallback，其余保持调用方 fallback（模拟 por_parameters 缺失/存在）。</summary>
+    private sealed class StubParameterProvider(Dictionary<string, int>? values = null) : ISystemParameterProvider
+    {
+        private readonly Dictionary<string, int> _values = values ?? [];
+
+        public Task<string> GetStringAsync(string paramKey, string fallback, CancellationToken cancellationToken)
+            => Task.FromResult(fallback);
+
+        public Task<int> GetIntAsync(string paramKey, int fallback, CancellationToken cancellationToken)
+            => Task.FromResult(_values.TryGetValue(paramKey, out var value) ? value : fallback);
+    }
+
     /// <summary>构建（处理器, 上下文, 消息记录器）：每次独立构建保证测试隔离。</summary>
     private static (ApprovalTimeoutScanHandler Handler, SupportTenantDbContext Db, RecordingMessageService Messages)
-        Build(bool resolveLeader, SupportApprovalsOptions? options = null)
+        Build(bool resolveLeader, SupportApprovalsOptions? options = null, Dictionary<string, int>? parameters = null)
     {
         var db = new SupportTenantDbContext(
             new JobStubTenantDatabaseResolver(),
@@ -90,6 +103,7 @@ public sealed class ApprovalTimeoutScanHandlerTests
             db,
             [new ScriptedLeaderSource(resolveLeader)],
             messages,
+            new StubParameterProvider(parameters),
             Options.Create(options ?? new SupportApprovalsOptions { UrgeIntervalMinutes = 0 }),
             NullLogger<ApprovalTimeoutScanHandler>.Instance);
         return (handler, db, messages);
@@ -245,5 +259,46 @@ public sealed class ApprovalTimeoutScanHandlerTests
         Assert.True(result.IsSuccess);
         Assert.Empty(messages.Templates);
         Assert.Empty(await db.OpLogs.ToListAsync(TestContext.Current.CancellationToken));
+    }
+
+    // ============ R-8 参数表阈值 ============
+
+    [Fact]
+    public async Task ParameterTableThresholdOverridesConfigFallback()
+    {
+        // config 上限 10 次不会上报；参数表改为 1 → 本轮即按节点策略上报
+        var (handler, db, messages) = Build(resolveLeader: true,
+            new SupportApprovalsOptions { UrgeIntervalMinutes = 0, MaxUrgeCount = 10 },
+            new Dictionary<string, int> { [ApprovalParameterKeys.MaxUrgeCount] = 1 });
+        var taskId = await SeedOverdueTaskAsync(db, ApprovalTimeoutAction.Escalate);
+        // 已催办 1 次：config 上限 10 不会上报，参数表上限 1 则本轮上报
+        (await db.Tasks.SingleAsync(t => t.Id == taskId, TestContext.Current.CancellationToken))
+            .RecordUrge(DateTimeOffset.UtcNow.AddMinutes(-5));
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        await handler.ExecuteAsync(new JobContext(), TestContext.Current.CancellationToken);
+
+        var original = await db.Tasks.AsNoTracking().SingleAsync(
+            t => t.Id == taskId, TestContext.Current.CancellationToken);
+        Assert.Equal(ApprovalTaskStatus.Canceled, original.Status);
+        Assert.Contains(messages.Templates,
+            m => m.TemplateCode == "msg.todo.generated" && m.RecipientUserId == Leader);
+    }
+
+    [Fact]
+    public async Task MissingParameterFallsBackToConfigThreshold()
+    {
+        // 参数表缺失：config 上限 10 次，本轮仅催办不上报
+        var (handler, db, messages) = Build(resolveLeader: true,
+            new SupportApprovalsOptions { UrgeIntervalMinutes = 0, MaxUrgeCount = 10 });
+        var taskId = await SeedOverdueTaskAsync(db, ApprovalTimeoutAction.Escalate);
+
+        await handler.ExecuteAsync(new JobContext(), TestContext.Current.CancellationToken);
+
+        var task = await db.Tasks.AsNoTracking().SingleAsync(
+            t => t.Id == taskId, TestContext.Current.CancellationToken);
+        Assert.Equal(ApprovalTaskStatus.Pending, task.Status);
+        Assert.Equal(1, task.UrgeCount);
+        Assert.DoesNotContain(messages.Templates, m => m.TemplateCode == "msg.todo.generated");
     }
 }

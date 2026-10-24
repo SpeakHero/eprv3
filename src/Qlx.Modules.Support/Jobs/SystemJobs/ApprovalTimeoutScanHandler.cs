@@ -5,7 +5,8 @@
  * 创建时间：2026-10-23 09:30:00 +08:00 中国标准时间 星期五
  * 描述：审批超时扫描任务（approval.timeout.scan，R8）——扫描到期 Pending 任务：
  *       节流催办（msg.urge.reminder）→ 催办达上限且节点为上报策略时转上级（ESCALATE 任务留痕）；
- *       上级解析不到时发系统预警并继续催办。次数 / 间隔 / 批量参数化走 SupportApprovalsOptions。
+ *       上级解析不到时发系统预警并继续催办。次数 / 间隔 / 批量参数化：优先读 por_parameters（approval.*），
+ *       缺失时回落到 SupportApprovalsOptions 的 config 值。
  */
 
 using System.Globalization;
@@ -15,6 +16,7 @@ using Microsoft.Extensions.Options;
 using Qlx.Abstractions.Approvals;
 using Qlx.Abstractions.Jobs;
 using Qlx.Abstractions.Messages;
+using Qlx.Abstractions.Modules;
 using Qlx.Modules.Support.Domain;
 using Qlx.Modules.Support.Options;
 using Qlx.Modules.Support.Services.Approvals;
@@ -29,18 +31,21 @@ namespace Qlx.Modules.Support.Jobs.SystemJobs;
 /// <param name="db">租户上下文。</param>
 /// <param name="approverSources">审批人来源集合（上级解析经 Bas 来源，宿主聚合）。</param>
 /// <param name="messageService">信息中心消息服务（催办 / 预警）。</param>
-/// <param name="options">审批中心配置（催办上限 / 节流间隔 / 批量）。</param>
+/// <param name="parameters">系统参数读取（approval.* 运行阈值，缺失回落 config）。</param>
+/// <param name="options">审批中心配置（催办上限 / 节流间隔 / 批量的 fallback）。</param>
 /// <param name="logger">日志器。</param>
 public sealed partial class ApprovalTimeoutScanHandler(
     SupportTenantDbContext db,
     IEnumerable<IApprovalApproverSource> approverSources,
     IMessageService messageService,
+    ISystemParameterProvider parameters,
     IOptions<SupportApprovalsOptions> options,
     ILogger<ApprovalTimeoutScanHandler> logger) : IJobHandler
 {
     private readonly SupportTenantDbContext _db = db;
     private readonly IReadOnlyList<IApprovalApproverSource> _approverSources = [.. approverSources];
     private readonly IMessageService _messageService = messageService;
+    private readonly ISystemParameterProvider _parameters = parameters;
     private readonly SupportApprovalsOptions _options = options.Value;
     private readonly ILogger<ApprovalTimeoutScanHandler> _logger = logger;
 
@@ -52,18 +57,28 @@ public sealed partial class ApprovalTimeoutScanHandler(
     {
         var now = DateTimeOffset.UtcNow;
 
+        // 运行阈值：por_parameters（approval.*）优先，缺失回落 config（R-8）
+        var maxUrgeCount = await _parameters.GetIntAsync(
+            ApprovalParameterKeys.MaxUrgeCount, _options.MaxUrgeCount, cancellationToken).ConfigureAwait(false);
+        var urgeInterval = TimeSpan.FromMinutes(await _parameters.GetIntAsync(
+            ApprovalParameterKeys.UrgeIntervalMinutes, _options.UrgeIntervalMinutes, cancellationToken)
+            .ConfigureAwait(false));
+        var batchSize = await _parameters.GetIntAsync(
+            ApprovalParameterKeys.TimeoutScanBatchSize, _options.TimeoutScanBatchSize, cancellationToken)
+            .ConfigureAwait(false);
+
         // 1. 到期任务批量扫描（DueAt 非空即节点配置了超时；Take 批量上限分批防抖）
         var dueTasks = await _db.Tasks
             .Where(t => t.Status == ApprovalTaskStatus.Pending
                 && t.DueAt != null && t.DueAt <= now)
             .OrderBy(t => t.DueAt)
-            .Take(_options.TimeoutScanBatchSize)
+            .Take(batchSize)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         if (dueTasks.Count == 0)
         {
             LogScanCompleted(_db.CurrentTenantId, 0, 0, 0);
-            return BuildResult(0, 0, 0);
+            return BuildResult(0, 0, 0, batchSize);
         }
 
         // 2. 实例与节点批量装配（两次批量 SQL，禁止逐任务联查）
@@ -95,7 +110,6 @@ public sealed partial class ApprovalTimeoutScanHandler(
             }
 
             var node = nodesByDef.GetValueOrDefault((instance.DefId, task.NodeKey));
-            var urgeInterval = TimeSpan.FromMinutes(_options.UrgeIntervalMinutes);
 
             // 节流：距最近一次催办不足间隔时跳过（避免每轮扫描重复轰炸）
             if (task.UrgeLastAt is { } lastUrge && now - lastUrge < urgeInterval)
@@ -106,7 +120,7 @@ public sealed partial class ApprovalTimeoutScanHandler(
             // 达到催办上限且节点为上报策略 → 转上级（R8）；否则仅催办
             if (node is not null
                 && node.TimeoutAction == ApprovalTimeoutAction.Escalate
-                && task.UrgeCount >= _options.MaxUrgeCount)
+                && task.UrgeCount >= maxUrgeCount)
             {
                 var handled = await EscalateToLeaderAsync(
                     task, instance, node, now, logs, cancellationToken).ConfigureAwait(false);
@@ -138,13 +152,13 @@ public sealed partial class ApprovalTimeoutScanHandler(
         }
 
         LogScanCompleted(_db.CurrentTenantId, urged, escalated, alerts);
-        return BuildResult(urged, escalated, alerts);
+        return BuildResult(urged, escalated, alerts, batchSize);
     }
 
     /// <summary>组装任务执行结果载荷。</summary>
-    private CompletedResult BuildResult(int urged, int escalated, int alerts)
+    private static CompletedResult BuildResult(int urged, int escalated, int alerts, int batchSize)
         => new(
-            new { Urged = urged, Escalated = escalated, Alerts = alerts, BatchSize = _options.TimeoutScanBatchSize },
+            new { Urged = urged, Escalated = escalated, Alerts = alerts, BatchSize = batchSize },
             null, null, ExecutionDurationMs: 0, IsSuccess: true);
 
     /// <summary>

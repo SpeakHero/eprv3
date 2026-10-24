@@ -14,6 +14,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OpenIddict.Abstractions;
+using Qlx.Abstractions.Approvals;
 using Qlx.Abstractions.Constants;
 using Qlx.Abstractions.Domain;
 using Qlx.BuildingBlocks.Ids;
@@ -248,7 +249,7 @@ public sealed partial class PortalSeedService(
     }
 
     /// <summary>
-    /// 系统参数种子：登录安全阈值默认值（与 config 示例值一致；参数表优先，config 仅兜底）。
+    /// 系统参数种子：登录安全阈值 + 审批超时阈值默认值（与 config 示例值一致；参数表优先，config 仅兜底）。
     /// 幂等：键已存在则跳过。
     /// </summary>
     private async Task SeedSystemParametersAsync(
@@ -266,6 +267,10 @@ public sealed partial class PortalSeedService(
             (SystemParameterKeys.AuthPasswordFailWindowMinutes,
                 options.PasswordFailWindowMinutes.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 "密码失败计数窗口（分钟），窗口结束自动清零解锁"),
+            // 审批中心运行阈值（R-8）：默认值与 SupportApprovalsOptions 一致，支持在线调整
+            (ApprovalParameterKeys.MaxUrgeCount, "3", "审批超时催办次数上限（次），达到后按节点策略上报上级"),
+            (ApprovalParameterKeys.UrgeIntervalMinutes, "60", "审批催办节流间隔（分钟），不足该间隔不重复催办"),
+            (ApprovalParameterKeys.TimeoutScanBatchSize, "200", "审批超时扫描单轮最大处理任务数（条）"),
         };
 
         foreach (var (key, value, description) in defaults)
