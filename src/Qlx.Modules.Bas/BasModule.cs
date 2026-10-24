@@ -39,7 +39,13 @@ public sealed class BasModule : IModule
             new PermissionDefinition("bas.admin.role.menu", "角色权限管理", PermissionKind.Menu),
             new PermissionDefinition("bas.admin.role.action", "角色权限维护操作", PermissionKind.Action),
         ],
-        Menus = [],
+        // 租户自管理域菜单（R-3/L-13）：路由与前端 /manage/* 约定一致，前端按 requiredPermissionCode 裁剪
+        Menus =
+        [
+            new MenuDefinition("bas.admin.org", "组织机构", "/manage/organizations", "OfficeBuilding", null, 10, "bas.admin.org.menu"),
+            new MenuDefinition("bas.admin.member", "成员管理", "/manage/members", "User", null, 20, "bas.admin.member.menu"),
+            new MenuDefinition("bas.admin.role", "角色权限", "/manage/roles", "Lock", null, 30, "bas.admin.role.menu"),
+        ],
         Jobs = [],
         ServiceJobs = [],
         SubscribedEvents = [],

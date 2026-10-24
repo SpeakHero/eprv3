@@ -219,6 +219,12 @@ public static class PortalConstants
         /// <summary>系统参数缓存键前缀。</summary>
         public const string SystemParameterPrefix = "_portal:params:";
 
+        /// <summary>菜单缓存键前缀（门户级与租户级共用，Manifest 同步后按此前缀失效）。</summary>
+        public const string MenuPrefix = "_portal:menu:";
+
+        /// <summary>菜单缓存有效期（扁平投影读多写少，与默认 TTL 一致）。</summary>
+        public static readonly TimeSpan MenuTtl = TimeSpan.FromMinutes(5);
+
         /// <summary>门户缓存默认有效期（参数与许可共用）。</summary>
         public static readonly TimeSpan DefaultTtl = TimeSpan.FromMinutes(5);
 

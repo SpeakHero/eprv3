@@ -13,6 +13,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Qlx.Abstractions.Modules;
+using Qlx.BuildingBlocks.Caching;
 using Qlx.BuildingBlocks.Ids;
 using Qlx.BuildingBlocks.Modules;
 using Qlx.Modules.Portal;
@@ -304,6 +305,7 @@ public sealed class ManifestSyncServiceTests
             _factory,
             new StubSnowflakeIdGenerator(),
             modules.ToList(),
+            new MemoryCacheService(Microsoft.Extensions.Options.Options.Create(new CacheOptions())),
             NullLogger<PortalManifestSyncService>.Instance);
     }
 }

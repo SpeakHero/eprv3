@@ -1,9 +1,11 @@
 /*
  * 所属公司：四川淇利馨集团有限公司
- * 描述：门户菜单 API 封装——GET /api/portal/menus（后端返回扁平 JSON，前端 menuStore 消费 menuTree.ts 组装）
+ * 描述：菜单 API 封装——统一走 @/core/http 共享实例 + ApiResponse 解包（G-1）；
+ *       /api/portal/menus（门户全量扁平）、/api/tenant/menus（按租户模块许可裁剪的扁平数据）。
+ *       后端只下发扁平 JSON，树组装由 utils/menuTree.ts 承担（B-2）。
  */
 
-import axios, { AxiosError } from 'axios'
+import { apiRequest } from '@/api/adapters/request'
 import type { NavGroupDTO, MenuFlatDTO } from '@/utils/menuTree'
 
 /** 菜单扁平 API 响应。 */
@@ -12,33 +14,18 @@ export interface MenusFlatResponse {
   menus: MenuFlatDTO[]
 }
 
-const http = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL ?? '',
-  timeout: 15000,
-  headers: { Accept: 'application/json' },
-})
+/**
+ * 获取门户全量菜单扁平数据（门户管理端 / 身份级会话使用）。
+ * @throws 网络错误 / 后端 success=false 时抛后端 message。
+ */
+export function fetchMenus(): Promise<MenusFlatResponse> {
+  return apiRequest<MenusFlatResponse>({ method: 'GET', url: '/api/portal/menus' })
+}
 
 /**
- * 获取门户菜单扁平数据。
- * @param accessToken Bearer Token（身份级或租户级均可，后端不裁剪权限，前端 menuStore 消费后裁剪）。
- * @throws 网络错误 / 后端返回非 ApiResponse 格式错误。
+ * 获取当前租户可见菜单扁平数据（租户上下文 Token，后端已按模块许可裁剪）。
+ * @throws 网络错误 / 无租户上下文（401）/ 后端 success=false。
  */
-export async function fetchMenus(accessToken: string): Promise<MenusFlatResponse> {
-  try {
-    const response = await http.get<{ data: MenusFlatResponse; code: number; message: string }>(
-      '/api/portal/menus',
-      { headers: { Authorization: `Bearer ${accessToken}` } },
-    )
-    const body = response.data
-    if (body.code !== 0) {
-      throw new Error(body.message || '菜单加载失败')
-    }
-    return body.data
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      const desc = (error as AxiosError<Record<string, unknown>>).response?.data?.message
-      throw new Error(typeof desc === 'string' && desc ? desc : '菜单加载失败')
-    }
-    throw error
-  }
+export function fetchTenantMenus(): Promise<MenusFlatResponse> {
+  return apiRequest<MenusFlatResponse>({ method: 'GET', url: '/api/tenant/menus' })
 }

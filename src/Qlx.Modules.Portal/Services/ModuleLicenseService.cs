@@ -47,25 +47,21 @@ public sealed class ModuleLicenseService(PortalDbContext db, ICacheService cache
     /// </summary>
     public async Task<ImmutableHashSet<string>> GetLicensedModuleCodesAsync(long tenantId, CancellationToken cancellationToken)
     {
+        // 读穿缓存（C-2：并发合并防击穿，禁止 Get → null → 查库 → Set 裸序列）
         var cacheKey = BuildCacheKey(tenantId);
-        var cached = await cache.GetAsync<ImmutableHashSet<string>>(cacheKey, cancellationToken).ConfigureAwait(false);
-        if (cached is not null)
-        {
-            return cached;
-        }
-
-        var codes = (await db.TenantModules
-            .AsNoTracking()
-            .Where(t => t.TenantId == tenantId && t.Status == Domain.Tenancy.TenantModuleStatus.Enabled)
-            .Select(t => t.ModuleCode)
-            .ToListAsync(cancellationToken).ConfigureAwait(false))
-            .ToImmutableHashSet();
-
-        await cache.SetAsync(cacheKey, codes, cancellationToken, new CacheEntryOptions
-        {
-            AbsoluteExpirationRelativeToNow = CacheTtl,
-        }).ConfigureAwait(false);
-
-        return codes;
+        return await cache.GetOrCreateAsync(
+            cacheKey,
+            factory: async ct =>
+            {
+                var codes = await db.TenantModules
+                    .AsNoTracking()
+                    .Where(t => t.TenantId == tenantId && t.Status == Domain.Tenancy.TenantModuleStatus.Enabled)
+                    .Select(t => t.ModuleCode)
+                    .ToListAsync(ct).ConfigureAwait(false);
+                return codes.ToImmutableHashSet();
+            },
+            cancellationToken: cancellationToken,
+            options: new CacheEntryOptions { AbsoluteExpirationRelativeToNow = CacheTtl })
+            .ConfigureAwait(false);
     }
 }

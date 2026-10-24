@@ -4,11 +4,12 @@
   说明：仅租户上下文可进入（规范 5.1 租户自管理域）；模块启停与自然人全局停用不在本域
 -->
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppIcon from '@/components/AppIcon.vue'
 import PortalFooter from '@/components/PortalFooter.vue'
 import SiteHeader from '@/components/SiteHeader.vue'
+import { useMenuStore } from '@/stores/menu'
 
 interface TenantNavItem {
   path: string
@@ -32,6 +33,57 @@ const supportNavItems: TenantNavItem[] = [
   { path: '/manage/support/printing', name: '打印模板', icon: 'Printer', hint: '模板 · 渲染预览' },
 ]
 
+/** 侧边栏分组（接口驱动；接口不可用时回退静态分组）。 */
+interface NavSection {
+  key: string
+  label: string
+  items: TenantNavItem[]
+}
+
+const menuStore = useMenuStore()
+
+onMounted(() => {
+  // 租户菜单接口按模块许可裁剪；失败不清空静态回退（store 内部仅记录 loadError）
+  void menuStore.loadForTenant()
+})
+
+/**
+ * 由 menuStore 组装结果投影为侧边栏分组：一级为导航分组，二级为菜单树（含子菜单）。
+ * 后端只下发扁平字段，此处仅做展示映射（B-4 前端职责）。
+ */
+const apiSections = computed<NavSection[]>(() =>
+  menuStore.builtGroups.map((group) => ({
+    key: group.groupCode,
+    label: group.groupName,
+    items: group.trees.flatMap((tree) => {
+      const node: TenantNavItem = {
+        path: tree.route,
+        name: tree.displayName,
+        icon: tree.icon || 'Grid',
+        hint: '',
+      }
+      const children = tree.children.map((child) => ({
+        path: child.route,
+        name: child.displayName,
+        icon: child.icon || 'Grid',
+        hint: '',
+      }))
+      return [node, ...children]
+    }),
+  })),
+)
+
+/** 有接口数据用接口分组，否则回退既有静态分组（保证租户端可用性）。 */
+const navSections = computed<NavSection[]>(() => {
+  if (menuStore.loaded && apiSections.value.length > 0) {
+    return apiSections.value
+  }
+  return [
+    { key: 'manage', label: '企业管理', items: tenantNavItems },
+    { key: 'support', label: '支撑功能', items: supportNavItems },
+  ]
+})
+
 const route = useRoute()
 const pageTitle = computed(() => (route.meta.title as string | undefined) ?? '企业管理')
 
@@ -46,45 +98,39 @@ function isActive(item: TenantNavItem): boolean {
 
     <div class="tenant-admin__body">
       <aside class="tenant-admin__side">
-        <p class="tenant-admin__label">企业管理</p>
-
-        <nav class="tenant-nav" aria-label="企业管理导航">
-          <RouterLink
-            v-for="item in tenantNavItems"
-            :key="item.path"
-            :to="item.path"
-            class="tenant-nav__item"
-            :class="{ 'is-active': isActive(item) }"
+        <template v-for="(section, index) in navSections" :key="section.key">
+          <p
+            class="tenant-admin__label"
+            :class="{ 'tenant-admin__label--support': index > 0 }"
           >
-            <span class="tenant-nav__icon">
-              <AppIcon :name="item.icon" :size="16" />
-            </span>
-            <span class="tenant-nav__text">
-              <strong>{{ item.name }}</strong>
-              <em>{{ item.hint }}</em>
-            </span>
-          </RouterLink>
-        </nav>
+            {{ section.label }}
+          </p>
 
-        <p class="tenant-admin__label tenant-admin__label--support">支撑功能</p>
+          <nav class="tenant-nav" :aria-label="`${section.label}导航`">
+            <RouterLink
+              v-for="item in section.items"
+              :key="`${section.key}-${item.path}`"
+              :to="item.path"
+              class="tenant-nav__item"
+              :class="{ 'is-active': isActive(item) }"
+            >
+              <span class="tenant-nav__icon">
+                <AppIcon :name="item.icon" :size="16" />
+              </span>
+              <span class="tenant-nav__text">
+                <strong>{{ item.name }}</strong>
+                <em>{{ item.hint }}</em>
+              </span>
+            </RouterLink>
+          </nav>
+        </template>
 
-        <nav class="tenant-nav" aria-label="支撑功能导航">
-          <RouterLink
-            v-for="item in supportNavItems"
-            :key="item.path"
-            :to="item.path"
-            class="tenant-nav__item"
-            :class="{ 'is-active': isActive(item) }"
-          >
-            <span class="tenant-nav__icon">
-              <AppIcon :name="item.icon" :size="16" />
-            </span>
-            <span class="tenant-nav__text">
-              <strong>{{ item.name }}</strong>
-              <em>{{ item.hint }}</em>
-            </span>
-          </RouterLink>
-        </nav>
+        <p v-if="menuStore.loading && !menuStore.loaded" class="tenant-admin__nav-state">
+          正在加载模块菜单…
+        </p>
+        <p v-else-if="menuStore.loadError" class="tenant-admin__nav-state">
+          模块菜单暂不可用，已展示默认导航
+        </p>
 
         <section class="tenant-admin__scope">
           <h2>职责边界</h2>
@@ -164,6 +210,14 @@ function isActive(item: TenantNavItem): boolean {
 
 .tenant-admin__label--support {
   margin-top: var(--qlx-space-5);
+}
+
+/* 导航加载/回退提示（不阻断导航使用） */
+.tenant-admin__nav-state {
+  margin: var(--qlx-space-2) var(--qlx-space-3) 0;
+  color: var(--qlx-ink-400);
+  font-size: var(--qlx-text-xs);
+  line-height: 1.6;
 }
 
 .tenant-nav {
@@ -322,6 +376,7 @@ function isActive(item: TenantNavItem): boolean {
   }
 
   .tenant-admin__label,
+  .tenant-admin__nav-state,
   .tenant-nav__text,
   .tenant-admin__scope {
     display: none;

@@ -11,6 +11,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.Extensions.Logging;
 using Qlx.Abstractions.Modules;
+using Qlx.BuildingBlocks.Caching;
 using Qlx.BuildingBlocks.Ids;
 using Qlx.BuildingBlocks.Modules;
 using PortalPermDef = Qlx.Modules.Portal.Domain.Tenancy.PermissionDefinition;
@@ -36,11 +37,13 @@ namespace Qlx.Modules.Portal.Services;
 /// <param name="dbFactory">PortalDbContext 工厂，创建时已注入 ManifestDefinitionReadOnlyGuardInterceptor。</param>
 /// <param name="snowflake">雪花 Id 生成器，为新增的清单实体分配全局唯一主键。</param>
 /// <param name="modules">宿主扫描到的全部 IModule 实例集合（单例）。</param>
+/// <param name="cache">统一缓存服务（同步完成后失效菜单投影缓存，G-4）。</param>
 /// <param name="logger">日志器。</param>
 public sealed partial class PortalManifestSyncService(
     IDbContextFactory<PortalDbContext> dbFactory,
     ISnowflakeIdGenerator snowflake,
     IEnumerable<IModule> modules,
+    ICacheService cache,
     ILogger<PortalManifestSyncService> logger) : IModuleManifestSyncService
 {
     // =====================================================================
@@ -73,6 +76,9 @@ public sealed partial class PortalManifestSyncService(
         // 单独处理而不嵌入 SyncModuleInternalAsync，避免其他无 TopNavigationGroups 的模块
         // 把 Portal 模块已写入的导航分组误标记为 IsDeprecated。
         await SyncTopNavigationGroupsAsync(moduleList, ct).ConfigureAwait(false);
+
+        // 清单变更即菜单投影失效（C-5 失效优先：DB 已提交后再删缓存，后续读经 GetOrCreateAsync 重建）
+        await cache.RemoveByPrefixAsync(PortalConstants.CacheKeys.MenuPrefix, ct).ConfigureAwait(false);
 
         LogSyncAllDone();
     }

@@ -109,4 +109,26 @@ describe('buildTreeForTenant', () => {
     const result = buildTreeForTenant(sampleNavGroups, sampleMenus, [], [], 'TenantAdmin', false)
     expect(result).toHaveLength(0)
   })
+
+  it('父节点被许可裁剪仍保留子节点时，子节点提升为顶级（不丢菜单）', () => {
+    const menus: MenuFlatDTO[] = [
+      { moduleCode: 'bas', menuCode: 'supplier.root', parentCode: null, groupName: '往来单位', displayName: '供应商', route: '/bas/supplier', icon: 'Shop', requiredPermissionCode: 'bas.supplier.view', sortOrder: 10, openMode: 1 },
+      { moduleCode: 'bas', menuCode: 'supplier.edit', parentCode: 'supplier.root', groupName: '往来单位', displayName: '供应商编辑', route: '/bas/supplier/edit', icon: '', requiredPermissionCode: null, sortOrder: 12, openMode: 1 },
+    ]
+    const result = buildTreeForTenant(sampleNavGroups, menus, ['bas'], [], 'OrdinaryMember', false)
+
+    // 父节点无 bas.supplier.view 被裁剪，子节点 parentCode 找不到父 → 提升为根
+    expect(result).toHaveLength(1)
+    expect(result[0].trees.map((t) => t.menuCode)).toEqual(['supplier.edit'])
+  })
+
+  it('同一分组聚合多个模块菜单：按 sortOrder 升序合并', () => {
+    const navGroups: NavGroupDTO[] = [
+      { groupCode: 'workbench', groupName: '工作台', moduleCodes: 'stk,bas', sortOrder: 0 },
+    ]
+    const result = buildTreeForTenant(navGroups, sampleMenus, ['bas', 'stk'], [], 'TenantAdmin', false)
+
+    expect(result).toHaveLength(1)
+    expect(result[0].trees.map((t) => t.menuCode)).toEqual(['supplier.root', 'stock.root'])
+  })
 })
