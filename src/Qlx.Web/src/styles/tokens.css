@@ -1,0 +1,139 @@
+/*
+ * 所属公司：四川淇利馨集团有限公司
+ * 描述：设计令牌（Design Tokens）——颜色 / 字体 / 间距 / 圆角 / 阴影 / 层级
+ * 视觉方向：参照电子税务局的政务门户语汇——藏蓝结构色 + 鎏金细描边 + 朱红印章点缀，
+ *          大面积留白，层级依靠边框与底色而非重阴影。
+ */
+
+:root {
+  /* ============ 结构色（藏蓝，用于顶栏 / 主操作 / 焦点） ============ */
+  --qlx-brand-900: #082c56;
+  --qlx-brand-800: #0b3868;
+  --qlx-brand-700: #0e4478;
+  --qlx-brand-600: #135186;
+  --qlx-brand-500: #1a5f9b;
+  --qlx-brand-300: #7ba6cf;
+  --qlx-brand-100: #dce8f4;
+  --qlx-brand-50: #f0f5fa;
+
+  /* ============ 鎏金色（描边 / 强调 / 徽标） ============ */
+  --qlx-gold-600: #9c7a1c;
+  --qlx-gold-500: #bf9b30;
+  --qlx-gold-400: #d8bc66;
+  --qlx-gold-100: #f4e9c8;
+
+  /* ============ 印章朱红（仅品牌徽记 / 极少量强调） ============ */
+  --qlx-seal: #a8232c;
+  --qlx-seal-soft: #f7e6e7;
+
+  /* ============ 中性色（冷灰，与藏蓝同温） ============ */
+  --qlx-ink-900: #141b26;
+  --qlx-ink-800: #232c3a;
+  --qlx-ink-700: #354050;
+  --qlx-ink-600: #4c596b;
+  --qlx-ink-500: #6b7789;
+  --qlx-ink-400: #929dae;
+  --qlx-ink-300: #b3bcc9;
+  --qlx-ink-200: #cfd7e1;
+  --qlx-ink-100: #e4e9ef;
+  --qlx-line: #dfe6ee;
+  --qlx-canvas: #f4f6f9;
+  --qlx-canvas-deep: #eaeff5;
+  --qlx-surface: #ffffff;
+
+  /* ============ 语义色 ============ */
+  --qlx-success: #1f7a53;
+  --qlx-success-soft: #e6f2ec;
+  --qlx-warning: #a86c14;
+  --qlx-warning-soft: #fbf1de;
+  --qlx-danger: #b3261e;
+  --qlx-danger-soft: #fbe9e7;
+  --qlx-info: #2f5d8a;
+  --qlx-info-soft: #e7eef5;
+
+  /* ============ 字体 ============ */
+  --qlx-font-sans: "PingFang SC", "Microsoft YaHei", "Hiragino Sans GB",
+    "Source Han Sans SC", "Noto Sans CJK SC", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --qlx-font-serif: "Source Han Serif SC", "Noto Serif SC", "Songti SC", "SimSun", Georgia, serif;
+  --qlx-font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, "Courier New", monospace;
+  --qlx-font-numeric: "DIN Alternate", "Roboto Mono", var(--qlx-font-sans);
+
+  --qlx-text-xs: 12px;
+  --qlx-text-sm: 13px;
+  --qlx-text-base: 14px;
+  --qlx-text-md: 16px;
+  --qlx-text-lg: 18px;
+  --qlx-text-xl: 22px;
+  --qlx-text-2xl: 28px;
+  --qlx-text-3xl: 36px;
+
+  /* ============ 间距（8pt 栅格） ============ */
+  --qlx-space-1: 4px;
+  --qlx-space-2: 8px;
+  --qlx-space-3: 12px;
+  --qlx-space-4: 16px;
+  --qlx-space-5: 20px;
+  --qlx-space-6: 24px;
+  --qlx-space-8: 32px;
+  --qlx-space-10: 40px;
+  --qlx-space-12: 48px;
+  --qlx-space-16: 64px;
+
+  /* ============ 圆角（政务门户偏方正） ============ */
+  --qlx-radius-xs: 2px;
+  --qlx-radius-sm: 4px;
+  --qlx-radius-md: 6px;
+  --qlx-radius-lg: 10px;
+  --qlx-radius-full: 999px;
+
+  /* ============ 阴影（极克制） ============ */
+  --qlx-shadow-xs: 0 1px 2px rgb(20 27 38 / 6%);
+  --qlx-shadow-sm: 0 2px 6px rgb(20 27 38 / 8%);
+  --qlx-shadow-md: 0 8px 24px rgb(20 27 38 / 10%);
+  --qlx-shadow-lg: 0 16px 40px rgb(20 27 38 / 14%);
+  --qlx-shadow-brand: 0 6px 18px rgb(14 68 120 / 22%);
+
+  /* ============ 层级 ============ */
+  --qlx-z-base: 1;
+  --qlx-z-sticky: 100;
+  --qlx-z-header: 200;
+  --qlx-z-overlay: 900;
+  --qlx-z-toast: 1000;
+
+  /* ============ 尺寸 ============ */
+  --qlx-header-height: 60px;
+  --qlx-subheader-height: 46px;
+  --qlx-tabbar-height: 38px;
+  --qlx-content-max: 1440px;
+  --qlx-auth-card-width: 420px;
+
+  /* ============ 动效 ============ */
+  --qlx-ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --qlx-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --qlx-duration-fast: 140ms;
+  --qlx-duration-base: 220ms;
+  --qlx-duration-slow: 360ms;
+
+  /* ============ 密度（紧凑模式由 html[data-density] 覆盖） ============ */
+  --qlx-control-height: 32px;
+  --qlx-control-height-sm: 28px;
+  --qlx-row-height: 44px;
+  --qlx-density-pad: var(--qlx-space-4);
+}
+
+/* 紧凑模式：控制高度与行高整体收窄 */
+html[data-density='compact'] {
+  --qlx-control-height: 30px;
+  --qlx-control-height-sm: 26px;
+  --qlx-row-height: 38px;
+  --qlx-density-pad: var(--qlx-space-3);
+}
+
+/* 尊重系统减弱动效偏好 */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --qlx-duration-fast: 1ms;
+    --qlx-duration-base: 1ms;
+    --qlx-duration-slow: 1ms;
+  }
+}

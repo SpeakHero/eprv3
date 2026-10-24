@@ -1,0 +1,8 @@
+{
+  "Qlx": {
+    "PlatformShared": {
+      "_comment": "共享库全局项只读读取器：收件箱合并视图进程内短缓存时长；共享库故障时降级空集不影响本地消息",
+      "InboxCacheSeconds": 30
+    }
+  }
+}

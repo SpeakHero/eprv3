@@ -1,0 +1,14 @@
+{
+  "Qlx": {
+    "EventBus": {
+      "Outbox": {
+        "Enabled": true,
+        "PollIntervalMs": 500,
+        "BatchSize": 50,
+        "LeaseSeconds": 30,
+        "MaxAttempts": 10,
+        "RetryDelaySeconds": 5
+      }
+    }
+  }
+}

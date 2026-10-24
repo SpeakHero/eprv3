@@ -1,0 +1,10 @@
+{
+  "Qlx": {
+    "DataProtection": {
+      "_comment": "KeyDirectory 为空则密钥仅驻留内存；生产必须指向共享存储目录",
+      "ApplicationName": "Qlx.Erpv3",
+      "KeyDirectory": "",
+      "KeyLifetimeDays": 90
+    }
+  }
+}

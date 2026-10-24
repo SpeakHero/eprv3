@@ -1,0 +1,10 @@
+{
+  "Qlx": {
+    "Numbering": {
+      "_comment": "PeriodFormat 变更即改变流水重置周期，调整需评估历史编号区间",
+      "PeriodFormat": "yyyyMM",
+      "SerialPadding": 6,
+      "Separator": "-"
+    }
+  }
+}

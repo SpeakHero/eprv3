@@ -1,0 +1,10 @@
+{
+  "Qlx": {
+    "Sse": {
+      "_comment": "SSE 基座参数：心跳间隔 / 租户续传环形缓冲容量 / 单连接有界通道容量（满载淘汰最旧，靠续传补漏）",
+      "HeartbeatSeconds": 30,
+      "BufferCapacity": 1000,
+      "ChannelCapacity": 64
+    }
+  }
+}

@@ -1,0 +1,140 @@
+/*
+ * 所属公司：四川淇利馨集团有限公司
+ * 描述：全局基础样式（重置 / 排版 / 通用容器 / 工具类）
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--qlx-canvas);
+  color: var(--qlx-ink-900);
+  font-family: var(--qlx-font-sans);
+  font-size: var(--qlx-text-base);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+p,
+ul,
+ol,
+figure {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+:focus-visible {
+  outline: 2px solid var(--qlx-brand-500);
+  outline-offset: 2px;
+  border-radius: var(--qlx-radius-xs);
+}
+
+::selection {
+  background: var(--qlx-brand-100);
+  color: var(--qlx-brand-900);
+}
+
+/* ============ 滚动条 ============ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--qlx-ink-300) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--qlx-ink-300);
+  border: 2px solid transparent;
+  border-radius: var(--qlx-radius-full);
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--qlx-ink-400);
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ============ 通用容器 ============ */
+.qlx-container {
+  width: 100%;
+  max-width: var(--qlx-content-max);
+  margin: 0 auto;
+  padding: 0 var(--qlx-space-6);
+}
+
+.qlx-eyebrow {
+  color: var(--qlx-ink-500);
+  font-family: var(--qlx-font-mono);
+  font-size: var(--qlx-text-xs);
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.qlx-numeric {
+  font-family: var(--qlx-font-numeric);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 屏幕阅读器专用文本 */
+.qlx-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 768px) {
+  .qlx-container {
+    padding: 0 var(--qlx-space-4);
+  }
+}

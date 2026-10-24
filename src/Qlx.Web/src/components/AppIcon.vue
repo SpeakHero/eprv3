@@ -1,0 +1,144 @@
+<!--
+  所属公司：四川淇利馨集团有限公司
+  描述：统一图标出口——导航目录以字符串声明图标，避免各页面重复 import
+-->
+<script setup lang="ts">
+import type { Component } from 'vue'
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  Avatar,
+  Bell,
+  Box,
+  Calendar,
+  Check,
+  Close,
+  Coin,
+  Collection,
+  CreditCard,
+  DataAnalysis,
+  Delete,
+  Document,
+  Files,
+  Filter,
+  Finished,
+  FolderAdd,
+  Goods,
+  Grid,
+  House,
+  List,
+  Lock,
+  Management,
+  Memo,
+  Menu,
+  Message,
+  Money,
+  Notebook,
+  OfficeBuilding,
+  Odometer,
+  Picture,
+  PieChart,
+  Plus,
+  Position,
+  Postcard,
+  RefreshLeft,
+  Search,
+  Sell,
+  SetUp,
+  Setting,
+  Shop,
+  ShoppingCart,
+  Star,
+  Switch,
+  SwitchButton,
+  Tickets,
+  Timer,
+  TrendCharts,
+  UploadFilled,
+  User,
+  UserFilled,
+  Van,
+  View,
+  Wallet,
+  Warning,
+} from '@element-plus/icons-vue'
+
+const props = withDefaults(
+  defineProps<{
+    /** 图标名（与 @element-plus/icons-vue 导出名一致）。 */
+    name: string
+    /** 像素尺寸。 */
+    size?: number
+  }>(),
+  { size: 16 },
+)
+
+const iconMap: Record<string, Component> = {
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  Avatar,
+  Bell,
+  Box,
+  Calendar,
+  Check,
+  Close,
+  Coin,
+  Collection,
+  CreditCard,
+  DataAnalysis,
+  Delete,
+  Document,
+  Files,
+  Filter,
+  Finished,
+  FolderAdd,
+  Goods,
+  Grid,
+  House,
+  List,
+  Lock,
+  Management,
+  Memo,
+  Menu,
+  Message,
+  Money,
+  Notebook,
+  OfficeBuilding,
+  Odometer,
+  Picture,
+  PieChart,
+  Plus,
+  Position,
+  Postcard,
+  RefreshLeft,
+  Search,
+  Sell,
+  SetUp,
+  Setting,
+  Shop,
+  ShoppingCart,
+  Star,
+  Switch,
+  SwitchButton,
+  Tickets,
+  Timer,
+  TrendCharts,
+  UploadFilled,
+  User,
+  UserFilled,
+  Van,
+  View,
+  Wallet,
+  Warning,
+}
+
+const resolved = (): Component => iconMap[props.name] ?? Grid
+</script>
+
+<template>
+  <el-icon :size="size" aria-hidden="true">
+    <component :is="resolved()" />
+  </el-icon>
+</template>

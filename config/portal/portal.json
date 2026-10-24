@@ -1,0 +1,21 @@
+{
+  "Qlx": {
+    "Portal": {
+      "_comment": "门户管理库固定连接串（开发环境 LocalDB；生产环境替换为正式门户库地址）",
+      "PortalConnectionString": "Server=(localdb)\\MSSQLLocalDB;Database=qlx_portal;Integrated Security=True;TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=True;",
+      "Audit": {
+        "_comment": "审计并入门户库 plog_* 后的保留期（B4 落地），本期仅配置与校验",
+        "RetentionDays": 90
+      },
+      "Provisioning": {
+        "_comment": "新建租户独立库预配参数：库名=前缀+租户编码（短横线转下划线）；凭据留空走集成认证，生产由预配流程写入加密凭据；DefaultDatabaseMode 为请求未显式指定时的默认模式",
+        "DbHost": "(localdb)",
+        "DbPort": 1433,
+        "DbNamePrefix": "qlx_tenant_",
+        "TrialDays": 14,
+        "DefaultDatabaseMode": "Shared",
+        "DefaultModuleCodes": [ "bas", "portal" ]
+      }
+    }
+  }
+}

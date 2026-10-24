@@ -1,0 +1,14 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Qlx.Abstractions/Qlx.Abstractions.csproj" />
+    <Project Path="src/Qlx.BuildingBlocks/Qlx.BuildingBlocks.csproj" />
+    <Project Path="src/Qlx.Host/Qlx.Host.csproj" />
+    <Project Path="src/Qlx.Modules.Portal/Qlx.Modules.Portal.csproj" />
+    <Project Path="src/Qlx.Modules.Bas/Qlx.Modules.Bas.csproj" />
+    <Project Path="src/Qlx.Modules.Support/Qlx.Modules.Support.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Qlx.BuildingBlocks.Tests/Qlx.BuildingBlocks.Tests.csproj" />
+    <Project Path="tests/Qlx.ArchitectureTests/Qlx.ArchitectureTests.csproj" />
+  </Folder>
+</Solution>

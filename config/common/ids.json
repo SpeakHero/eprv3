@@ -1,0 +1,21 @@
+{
+  "Qlx": {
+    "Ids": {
+      "Snowflake": {
+        "_comment": "开发默认 Static + StaticWorkerId=1；生产多实例必须切 Redis 租约",
+        "LeaseProvider": "Static",
+        "StaticWorkerId": 1,
+        "Epoch": "",
+        "RedisKeyPrefix": "qlx:snowflake:worker",
+        "LeaseSeconds": 30,
+        "RenewIntervalSeconds": 10
+      },
+      "Obfuscation": {
+        "_comment": "Salt 为开发占位值；生产必须经密钥引用注入并轮换，禁止仓库明文",
+        "Salt": "qlx-dev-only-salt-2026",
+        "MinLength": 8,
+        "Alphabet": ""
+      }
+    }
+  }
+}

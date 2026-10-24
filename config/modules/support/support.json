@@ -1,0 +1,38 @@
+{
+  "Qlx": {
+    "Support": {
+      "Files": {
+        "_comment": "Root 为本地存储根目录（相对宿主内容根或绝对路径）；MaxSyncUploadBytes 以上走 ASYNC 分片（2C）；配额按 QuotaTotalBytes 为基数计算预警/阻断百分比",
+        "Root": "App_Data/files",
+        "MaxSyncUploadBytes": 104857600,
+        "RecycleDays": 30,
+        "TempTtlDays": 7,
+        "QuotaPercent": 90,
+        "QuotaBlockPercent": 100,
+        "QuotaTotalBytes": 10737418240
+      },
+      "Jobs": {
+        "_comment": "2C 后台任务中心模块级参数（调度引擎/Worker 参数在 Qlx:Jobs 节）；ExecutionRetentionDays 仅清理 job_executions，job_logs 永久保留",
+        "DefaultTimeoutSeconds": 1800,
+        "ExecutionRetentionDays": 30,
+        "IdempotencyWindowSeconds": 300
+      },
+      "Messages": {
+        "_comment": "2D 信息中心模块级参数；业务运行阈值（如归档保留期调整）走 por_parameters 在线维护",
+        "ArchiveRetentionDays": 90,
+        "DedupMinutes": 5,
+        "EmailRetryLimit": 3,
+        "RetryBaseDelaySeconds": 60,
+        "InboxPageSizeMax": 100
+      },
+      "Approvals": {
+        "_comment": "2E 审批中心占位节",
+        "DefaultTimeoutHours": 72
+      },
+      "Print": {
+        "_comment": "打印中心占位节",
+        "TemplateCacheMinutes": 10
+      }
+    }
+  }
+}

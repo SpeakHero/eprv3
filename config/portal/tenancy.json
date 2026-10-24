@@ -1,0 +1,59 @@
+{
+  "Qlx": {
+    "MultiTenancy": {
+      "_comment": "门户级多租户配置：TenantConnectionPreloadService 预热全部活跃租户连接信息；TenantMigrationService 后台扫描 Provisioning 租户并逐模块 Migrate。BatchSize 控制灰度分批每次处理的租户数；MaxRetryCount 是单租户最大尝试次数（超过标记 ProvisioningFailed）；MaxConcurrentConnectionsPerTenant 是每租户连接池闸门上限（50+ 租户调大）",
+      "ScanIntervalSeconds": 60,
+      "MigrationConcurrency": 4,
+      "ModuleTimeoutSeconds": 300,
+      "BatchSize": 5,
+      "MaxRetryCount": 3,
+      "MaxConcurrentConnectionsPerTenant": 50,
+      "MasterConnectionString": "Server=(localdb)\\MSSQLLocalDB;InitialCatalog=master;Integrated Security=True;TrustServerCertificate=True;"
+    },
+    "Tenancy": {
+      "_comment": "租户数据库模式：共享租户统一落 qlx_tenant_shared（凭据来自本节，不读路由行）；新建租户默认模式 Shared。PlanMappings 为会员体系预留，本期不读取",
+      "SharedDatabase": {
+        "DbHost": "(localdb)",
+        "DbPort": 1433,
+        "DbName": "qlx_tenant_shared",
+        "DbUser": "",
+        "DbPassword": "",
+        "ConnectTimeoutSeconds": 30,
+        "MinPoolSize": 0,
+        "MaxPoolSize": 200,
+        "MultipleActiveResultSets": true
+      },
+      "DatabaseMode": {
+        "DefaultMode": "Shared",
+        "PlanMappings": {}
+      },
+      "DevelopmentFallback": {
+        "_comment": "TenantId 未初始化（请求管线尚未建立租户上下文）时的开发兜底连接；生产必须保持 Enabled=false（默认即关闭）",
+        "Enabled": true,
+        "ConnectionString": "Server=(localdb)\\MSSQLLocalDB;Database=qlx_dev_v3;Trusted_Connection=True;TrustServerCertificate=True;"
+      },
+      "Upgrade": {
+        "_comment": "共享库 → 独立库升级流水线：Dispatcher 扫描 Pending 任务串行执行（建库→全量复制→校验→切换路由）；BatchSize 是键集分页批量复制的每批行数；VerifySampleSize 是行数比对后抽样整行哈希校验的行数；RetentionDays 是升级完成后共享库残留保留天数；CleanBatchSize/CleanIntervalHours 控制残留清理服务节奏",
+        "Enabled": true,
+        "ScanIntervalSeconds": 15,
+        "BatchSize": 1000,
+        "VerifySampleSize": 100,
+        "RetentionDays": 30,
+        "CleanBatchSize": 5000,
+        "CleanIntervalHours": 24
+      },
+      "IsolationAudit": {
+        "_comment": "租户隔离周期巡检：对全部活跃租户复用 TenantIsolationAuditor 跑跨租户探针，报告落 por_isolation_audit_records，严重发现落审计",
+        "Enabled": true,
+        "IntervalHours": 24
+      }
+    },
+    "PlatformShared": {
+      "_comment": "平台共享库（glb_*/hangfire_*）：本期只落配置与校验，业务随 2D 信息中心落地；开发期只读连接串留空回退主连接",
+      "ConnectionString": "Server=(localdb)\\MSSQLLocalDB;Database=qlx_shared;Integrated Security=True;TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=True;",
+      "ReadOnlyConnectionString": "",
+      "GlobalMessageRetentionDays": 365,
+      "InboxCacheSeconds": 30
+    }
+  }
+}

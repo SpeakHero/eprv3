@@ -1,0 +1,8 @@
+{
+  "Qlx": {
+    "Audit": {
+      "_comment": "B4 审计并入门户库：连接串指向 qlx_portal（plog_* 表），不再是独立 qlx_audit 库；开发期 LocalDB，生产由运维配置",
+      "ConnectionString": "Server=(localdb)\\MSSQLLocalDB;Database=qlx_portal;Integrated Security=True;TrustServerCertificate=True;Encrypt=False;MultipleActiveResultSets=True;"
+    }
+  }
+}

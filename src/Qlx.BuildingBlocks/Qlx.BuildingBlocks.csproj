@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\Qlx.Abstractions\Qlx.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.0" />
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.20" />
+    <PackageReference Include="Hangfire.Core" Version="1.8.20" />
+    <PackageReference Include="Hangfire.SqlServer" Version="1.8.20" />
+    <!-- 显式引用覆盖 Hangfire.Core 传递依赖的漏洞版本 11.0.1（NU1903；13.0.x 已修复 GHSA-5crp-9r3c-p9vr） -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="MailKit" Version="4.11.0" />
+    <!-- 2F 打印：Scriban 模板引擎 + QRCoder 溯源二维码（RazorLight 在 .NET 10 运行时渲染失败，按方案 R2 预案选型；打印引擎公共组件归口 BuildingBlocks，Support 只组合） -->
+    <PackageReference Include="Scriban" Version="6.2.1" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+    <PackageReference Include="StackExchange.Redis" Version="3.4.5" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.13" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.13" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.13">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="ToolGood.Words.Pinyin" Version="3.1.0.4" />
+  </ItemGroup>
+
+</Project>

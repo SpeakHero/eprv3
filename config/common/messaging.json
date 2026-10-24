@@ -1,0 +1,18 @@
+{
+  "Qlx": {
+    "Messaging": {
+      "Smtp": {
+        "_comment": "邮件渠道配置：开发默认关闭（消息降级站内信并落 send_logs 失败原因）；启用时 Host/FromEmail/Username/Password 必填，Password 走密钥引用禁止明文入库",
+        "Enabled": false,
+        "Host": "",
+        "Port": 587,
+        "UseSsl": false,
+        "FromEmail": "",
+        "FromName": "淇利馨集团 ERP",
+        "Username": "",
+        "Password": "",
+        "TimeoutSeconds": 15
+      }
+    }
+  }
+}

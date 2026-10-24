@@ -1,0 +1,17 @@
+{
+  "Qlx": {
+    "Cors": {
+      "_comment": "前后端分离跨域配置：AllowedOrigins 为前端部署源（协议+主机+端口），多个源用数组；生产环境务必改为正式前端域名，禁止使用 '*'（因 AllowCredentials=true）；Enabled=false 时不启用 CORS（纯同源部署）",
+      "Enabled": true,
+      "AllowedOrigins": [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173"
+      ],
+      "AllowedMethods": [ "*" ],
+      "AllowedHeaders": [ "*" ],
+      "ExposedHeaders": [ "Authorization", "X-Tenant-Id", "Content-Disposition" ],
+      "AllowCredentials": true,
+      "PreflightMaxAgeSeconds": 600
+    }
+  }
+}

@@ -1,0 +1,12 @@
+/*
+ * 所属公司：四川淇利馨集团有限公司
+ * 描述：样式入口——设计令牌 → 基础样式 → Element Plus 主题覆盖
+ */
+
+@import './tokens.css';
+@import './base.css';
+@import './element.css';
+
+#app {
+  min-height: 100%;
+}

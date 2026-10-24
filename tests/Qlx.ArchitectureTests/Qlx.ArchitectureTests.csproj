@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="10.1.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="xunit.v3" Version="4.0.2" />
+    <PackageReference Include="xunit.v3.assert" Version="4.0.2" />
+    <!-- 固定 IdentityModel 版本：Portal(8.19.2)/Bas(OpenIddict 7.7.x) 图合并后消除 MSB3277 冲突 -->
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.19.2" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.19.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Qlx.Abstractions\Qlx.Abstractions.csproj" />
+    <ProjectReference Include="..\..\src\Qlx.BuildingBlocks\Qlx.BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\src\Qlx.Modules.Portal\Qlx.Modules.Portal.csproj" />
+    <ProjectReference Include="..\..\src\Qlx.Modules.Bas\Qlx.Modules.Bas.csproj" />
+    <ProjectReference Include="..\..\src\Qlx.Modules.Support\Qlx.Modules.Support.csproj" />
+  </ItemGroup>
+
+</Project>
