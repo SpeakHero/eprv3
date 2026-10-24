@@ -13,6 +13,9 @@ import QlxDescriptionList from '@/components/crud/QlxDescriptionList.vue'
 import type { DescriptionItem } from '@/components/crud/QlxDescriptionList.vue'
 import QlxPagePanel from '@/components/crud/QlxPagePanel.vue'
 import { licenseRecordColumns } from '@/data/adminColumns'
+import { createSseClient } from '@/core/sse'
+import type { SseClient } from '@/core/sse'
+import { loadSession } from '@/core/session'
 import {
   fetchModules,
   fetchTenantDetail,
@@ -21,6 +24,7 @@ import {
   promoteTenantToIsolated,
   retryTenantUpgradeJob,
   saveTenantLicense,
+  tenantProvisioningStreamUrl,
 } from '@/api/admin'
 import {
   databaseModeLabels,
@@ -39,6 +43,12 @@ import type {
   TenantUpgradeJobItem,
 } from '@/types/admin'
 import { formatDateTime } from '@/utils/format'
+import {
+  clampProvisioningPercent,
+  isProvisioningFinished,
+  provisioningStepLabel,
+} from '@/utils/provisioning'
+import type { TenantProvisioningProgressPayload } from '@/utils/provisioning'
 
 const route = useRoute()
 const tenantId = route.params.id as string
@@ -54,6 +64,18 @@ const loading = ref(true)
 /** 升级进度轮询计时器（Promise 轮询，3 秒一次，Done/Failed/无任务时停）。 */
 let upgradePollTimer: number | null = null
 
+/** 数据库预配进度（SSE 实时感知；null 表示尚未收到进度事件）。 */
+const provisioning = ref<{ step: string; progress: number; status: string } | null>(null)
+
+/** 预配进度 SSE 客户端（幂等：存在即复用）。 */
+let provisioningClient: SseClient | null = null
+/** SSE 建立后 8 秒仍未 open 的降级定时器。 */
+let provisioningFallbackTimer: number | null = null
+/** 实时通道不可用时的 30 秒轮询兜底定时器。 */
+let provisioningPollTimer: number | null = null
+/** SSE 是否曾成功 open（open 后不再触发降级）。 */
+let provisioningSseOpened = false
+
 /** 授权编辑态（进入页面时从租户当前授权初始化）。 */
 const selectedModules = ref<string[]>([])
 const remark = ref('')
@@ -62,6 +84,11 @@ const activeTab = ref('license')
 
 /** 是否 Shared 模式（仅 Shared 可发起升级）。 */
 const isSharedMode = computed(() => tenant.value?.databaseMode === 'Shared')
+
+/** 是否处于数据库预配中（租户待激活或库状态初始化中）。 */
+const isProvisioning = computed(
+  () => tenant.value?.status === 'Pending' || tenant.value?.dbStatus === 'Provisioning',
+)
 
 /** 是否已有进行中或最近升级任务（可重试仅 Failed）。 */
 const canRetryUpgrade = computed(
@@ -122,8 +149,10 @@ const upgradeProgressPercent = computed(() => {
   return map[upgradeJob.value.status] ?? 0
 })
 
-async function load(): Promise<void> {
-  loading.value = true
+async function load(silent = false): Promise<void> {
+  if (!silent) {
+    loading.value = true
+  }
   try {
     const [detail, modulesList, membersList, job] = await Promise.all([
       fetchTenantDetail(tenantId),
@@ -141,10 +170,18 @@ async function load(): Promise<void> {
     if (isUpgradeRunning.value) {
       startUpgradePolling()
     }
+    if (isProvisioning.value) {
+      startProvisioningWatch()
+    } else {
+      stopProvisioningWatch()
+      provisioning.value = null
+    }
   } catch (error) {
     ElMessage.error(error instanceof Error ? error.message : '加载租户详情失败')
   } finally {
-    loading.value = false
+    if (!silent) {
+      loading.value = false
+    }
   }
 }
 
@@ -174,6 +211,90 @@ function stopUpgradePolling(): void {
   if (upgradePollTimer !== null) {
     clearInterval(upgradePollTimer)
     upgradePollTimer = null
+  }
+}
+
+/** 启动数据库预配进度感知（SSE 实时通道 + 8 秒未连通降级为 30 秒轮询；幂等）。 */
+function startProvisioningWatch(): void {
+  if (provisioningClient) {
+    return
+  }
+  provisioningSseOpened = false
+  const client = createSseClient({
+    transport: 'fetch',
+    url: tenantProvisioningStreamUrl(tenantId),
+    getToken: () => loadSession().identityToken,
+    heartbeatTimeoutMs: 45000,
+  })
+  provisioningClient = client
+
+  client.subscribe('TenantProvisioningProgress', (event) => {
+    const data = event.data as TenantProvisioningProgressPayload
+    provisioning.value = {
+      step: data.step ?? '',
+      progress: clampProvisioningPercent(data.progress),
+      status: data.status ?? '',
+    }
+    if (isProvisioningFinished(data.status)) {
+      stopProvisioningWatch()
+      void load(true)
+    }
+  })
+
+  client.onStateChange((state) => {
+    // 已主动关闭 / 已被新一轮监听替换：忽略迟到的状态回调
+    if (provisioningClient !== client) {
+      return
+    }
+    if (state === 'open') {
+      provisioningSseOpened = true
+      clearProvisioningFallbackTimer()
+      stopProvisioningPolling()
+    } else if (state === 'closed' && isProvisioning.value) {
+      startProvisioningPolling()
+    }
+  })
+
+  provisioningFallbackTimer = window.setTimeout(() => {
+    provisioningFallbackTimer = null
+    if (!provisioningSseOpened && isProvisioning.value) {
+      startProvisioningPolling()
+    }
+  }, 8000)
+}
+
+/** 停止预配进度感知（保留已展示进度，避免轮询停止时进度条闪回 0）。 */
+function stopProvisioningWatch(): void {
+  const client = provisioningClient
+  provisioningClient = null
+  client?.close()
+  clearProvisioningFallbackTimer()
+  stopProvisioningPolling()
+  provisioningSseOpened = false
+}
+
+/** 启动 30 秒静默回刷（实时通道不可用时兜底）。 */
+function startProvisioningPolling(): void {
+  if (provisioningPollTimer !== null) {
+    return
+  }
+  void load(true)
+  provisioningPollTimer = window.setInterval(() => {
+    void load(true)
+  }, 30000)
+}
+
+function stopProvisioningPolling(): void {
+  if (provisioningPollTimer !== null) {
+    clearInterval(provisioningPollTimer)
+    provisioningPollTimer = null
+  }
+}
+
+function clearProvisioningFallbackTimer(): void {
+  if (provisioningFallbackTimer !== null) {
+    clearTimeout(provisioningFallbackTimer)
+    provisioningFallbackTimer = null
   }
 }
 
@@ -259,7 +380,10 @@ const memberRows = computed(() =>
 const recordRows = computed(() => records.value)
 
 onMounted(load)
-onBeforeUnmount(stopUpgradePolling)
+onBeforeUnmount(() => {
+  stopUpgradePolling()
+  stopProvisioningWatch()
+})
 </script>
 
 <template>
@@ -318,6 +442,22 @@ onBeforeUnmount(stopUpgradePolling)
       <p v-if="tenant?.databaseMode === 'Shared'" class="db-card__hint">
         当前租户数据存储在共享库中，切换独立库可获得更强隔离性与独立资源；
         升级由后台流水线自动完成，支持断点续跑与失败重试。
+      </p>
+    </section>
+
+    <!-- ============ 数据库预配进度（SSE 实时 + 30 秒轮询兜底） ============ -->
+    <section v-if="isProvisioning" class="provisioning-card">
+      <div class="provisioning-card__head">
+        <div>
+          <h3 class="provisioning-card__title">数据库预配进度</h3>
+          <el-tag type="warning" effect="dark" size="small">初始化中</el-tag>
+          <span class="provisioning-card__step">{{ provisioning ? provisioningStepLabel(provisioning.step) : '等待预配进度' }}</span>
+        </div>
+        <span class="provisioning-card__percent qlx-numeric">{{ provisioning?.progress ?? 0 }}%</span>
+      </div>
+      <el-progress :percentage="provisioning?.progress ?? 0" :show-text="false" :stroke-width="10" class="provisioning-card__bar" />
+      <p class="provisioning-card__hint">
+        预配由后台流水线自动完成（建库 → 按模块迁移 → 激活），完成后本页自动刷新；实时通道不可用时每 30 秒自动刷新一次。
       </p>
     </section>
 
@@ -426,7 +566,7 @@ onBeforeUnmount(stopUpgradePolling)
                 v-if="isUpgradeRunning"
                 size="small"
                 :loading="isUpgradeRunning"
-                @click="load"
+                @click="load()"
               >
                 刷新
               </el-button>
@@ -612,6 +752,53 @@ onBeforeUnmount(stopUpgradePolling)
 }
 
 .db-card__hint {
+  margin: var(--qlx-space-3) 0 0;
+  color: var(--qlx-ink-400);
+  font-size: var(--qlx-text-xs);
+  line-height: 1.6;
+}
+
+/* ============ 数据库预配进度 ============ */
+.provisioning-card {
+  margin-top: var(--qlx-space-5);
+  padding: var(--qlx-space-4);
+  border: 1px solid var(--qlx-line);
+  border-radius: var(--qlx-radius-sm);
+  background: var(--qlx-surface);
+}
+
+.provisioning-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--qlx-space-3);
+}
+
+.provisioning-card__title {
+  margin: 0;
+  margin-right: var(--qlx-space-2);
+  font-size: var(--qlx-text-base);
+  font-weight: 600;
+  color: var(--qlx-ink-800);
+}
+
+.provisioning-card__step {
+  margin-left: var(--qlx-space-2);
+  color: var(--qlx-ink-500);
+  font-size: var(--qlx-text-xs);
+}
+
+.provisioning-card__percent {
+  color: var(--qlx-warning);
+  font-size: var(--qlx-text-base);
+  font-weight: 600;
+}
+
+.provisioning-card__bar {
+  margin-top: var(--qlx-space-3);
+}
+
+.provisioning-card__hint {
   margin: var(--qlx-space-3) 0 0;
   color: var(--qlx-ink-400);
   font-size: var(--qlx-text-xs);

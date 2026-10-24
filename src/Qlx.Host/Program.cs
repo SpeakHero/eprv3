@@ -64,6 +64,7 @@ public static class Program
             .AddQlxNumbering(builder.Configuration)
             .AddQlxEventBus(builder.Configuration)
             .AddQlxDataProtection(builder.Configuration)
+            .AddQlxTenantSecurity(builder.Configuration)
             .AddQlxPortal(builder.Configuration, builder.Environment)
             .AddQlxBas()
             .AddQlxAuth(builder.Configuration, builder.Environment)

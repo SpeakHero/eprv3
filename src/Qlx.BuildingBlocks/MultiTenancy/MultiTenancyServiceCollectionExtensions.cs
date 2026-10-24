@@ -127,6 +127,9 @@ public static class MultiTenancyServiceCollectionExtensions
             // 隔离巡检服务（L3）：手动触发，产出报告
             services.TryAddSingleton<TenantIsolationAuditor>();
 
+            // 租户预配进度推送器（SSE 为尽力而为通道：未注册 SSE 基座时内部静默跳过）
+            services.TryAddSingleton<TenantProvisioningProgressPublisher>();
+
             // B4-08：四库启动校验（生产环境断言四类连接串账号互不相同）
             services.AddHostedService<Configuration.FourDatabaseStartupValidator>();
 

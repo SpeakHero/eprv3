@@ -16,6 +16,7 @@ export const SSE_EVENT_TYPES = [
   'GlobalPublish',
   'SystemAlert',
   'FileUploadCompleted',
+  'TenantProvisioningProgress',
 ] as const
 
 export type SseEventType = (typeof SSE_EVENT_TYPES)[number]

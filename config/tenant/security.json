@@ -1,0 +1,49 @@
+{
+  "Qlx": {
+    "Tenant": {
+      "Security": {
+        "_comment": "租户安全基线（启动期 ValidateOnStart 校验）：密码策略 / 会话超时 / 登录锁定 / 上传限制。① Lockout.MaxFailedAttempts 与 FailureWindowMinutes 必须与 por_parameters 的 auth.max_password_fail_attempts / auth.password_fail_window_minutes 对齐；运行时以参数表为权威来源，本文件仅作兜底默认值，禁止两处各自漂移（调整阈值须同时改本文件与参数种子）。② Upload.MaxFileSizeBytes 与 Qlx:Support:Files:MaxSyncUploadBytes 默认值保持一致（104857600 = 100MB）；本节点是租户安全基线声明与启动校验，实际上传执行仍由文件中心既有参数承载。",
+        "Password": {
+          "MinLength": 10,
+          "RequireUppercase": true,
+          "RequireLowercase": true,
+          "RequireDigit": true,
+          "RequireSymbol": true,
+          "ExpiryDays": 90,
+          "HistoryDepth": 5
+        },
+        "Session": {
+          "_comment": "IdleTimeoutMinutes 为空闲超时（无操作即失效）；AbsoluteTimeoutMinutes 为绝对超时（登录后累计上限，必须大于空闲超时）",
+          "IdleTimeoutMinutes": 30,
+          "AbsoluteTimeoutMinutes": 720
+        },
+        "Lockout": {
+          "MaxFailedAttempts": 5,
+          "FailureWindowMinutes": 15,
+          "LockoutMinutes": 30
+        },
+        "Upload": {
+          "_comment": "AllowedExtensions 必须小写且以 '.' 开头（上传白名单，启动期校验重复项）",
+          "MaxFileSizeBytes": 104857600,
+          "AllowedExtensions": [
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".gif",
+            ".webp",
+            ".pdf",
+            ".doc",
+            ".docx",
+            ".xls",
+            ".xlsx",
+            ".ppt",
+            ".pptx",
+            ".txt",
+            ".csv",
+            ".zip"
+          ]
+        }
+      }
+    }
+  }
+}

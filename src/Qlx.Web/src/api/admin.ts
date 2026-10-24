@@ -182,6 +182,11 @@ export function retryTenantUpgradeJob(tenantId: string): Promise<TenantUpgradeJo
   })
 }
 
+/** 租户预配进度 SSE 流地址（门户管理员身份 Token；仅转发 TenantProvisioningProgress 事件）。 */
+export function tenantProvisioningStreamUrl(tenantId: string): string {
+  return `/api/portal/admin/tenants/${tenantId}/provisioning-stream`
+}
+
 /** ============ 门户用户 ============ */
 
 /** 门户用户列表：keyword 匹配账号/显示名/手机号/邮箱。 */

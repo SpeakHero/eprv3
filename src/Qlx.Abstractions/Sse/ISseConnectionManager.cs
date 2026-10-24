@@ -39,7 +39,10 @@ public enum SseEventType
     SystemAlert,
 
     /// <summary>文件上传完成。</summary>
-    FileUploadCompleted
+    FileUploadCompleted,
+
+    /// <summary>租户预配进度。</summary>
+    TenantProvisioningProgress
 }
 
 /// <summary>

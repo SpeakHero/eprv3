@@ -8,10 +8,17 @@
  */
 
 using System.Net.Mime;
+using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using OpenIddict.Validation.AspNetCore;
+using Qlx.Abstractions.Domain;
+using Qlx.Abstractions.Exceptions;
+using Qlx.Abstractions.Sse;
 using Qlx.BuildingBlocks.Api;
+using Qlx.BuildingBlocks.Ids;
+using Qlx.BuildingBlocks.Sse;
 using Qlx.Modules.Portal.Auth;
 using Qlx.Modules.Portal.Dtos;
 using Qlx.Modules.Portal.Services;
@@ -22,6 +29,15 @@ namespace Qlx.Modules.Portal.Controllers;
 /// 门户管理端端点。契约与前端 <c>src/Qlx.Web/src/mock/portalAdmin.ts</c> 文件头声明一一对应，
 /// 仅门户管理员（身份级 Token 携带 is_portal_admin=1）可访问。
 /// </summary>
+/// <param name="tenantService">租户管理服务。</param>
+/// <param name="userService">门户用户管理服务。</param>
+/// <param name="moduleService">模块目录服务。</param>
+/// <param name="overviewService">工作台概览服务。</param>
+/// <param name="upgradeService">租户升级服务。</param>
+/// <param name="sseStream">SSE 端点通道（门户侧预配进度流，与连接管理器同单例）。</param>
+/// <param name="currentUser">当前用户上下文（token sub claim 为 Hashids 混淆串）。</param>
+/// <param name="idObfuscator">ID 混淆器（边界解码租户/用户标识）。</param>
+/// <param name="sseOptions">SSE 基座配置（心跳周期）。</param>
 [ApiController]
 [Authorize(
     AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
@@ -33,8 +49,14 @@ public sealed class PortalAdminController(
     IPortalUserAdminService userService,
     IPortalModuleAdminService moduleService,
     IPortalOverviewService overviewService,
-    IPortalTenantUpgradeService upgradeService) : ControllerBase
+    IPortalTenantUpgradeService upgradeService,
+    ISseClientChannel sseStream,
+    ICurrentUserContext currentUser,
+    IIdObfuscator idObfuscator,
+    IOptions<QlxSseOptions> sseOptions) : ControllerBase
 {
+    private readonly QlxSseOptions _sseOptions = sseOptions.Value;
+
     // =============== 租户 ===============
 
     /// <summary>分页查询租户。</summary>
@@ -188,5 +210,124 @@ public sealed class PortalAdminController(
     {
         var overview = await overviewService.GetOverviewAsync(cancellationToken).ConfigureAwait(false);
         return ApiResponse<PortalWorkbenchOverviewResponse>.Ok(overview);
+    }
+
+    // =============== 租户预配进度流（SSE） ===============
+
+    /// <summary>
+    /// 租户预配进度流。门户管理员 token 无租户上下文，无法复用 <c>/api/support/messages/stream</c>，
+    /// 故在门户侧建立专用通道：连接注册到被订阅租户 Id 上，仅转发 <see cref="SseEventType.TenantProvisioningProgress"/>
+    /// 类型事件（租户业务事件一律丢弃，避免消息/审批串流到门户端）。
+    /// </summary>
+    /// <param name="id">租户 Id（Hashids 混淆串）。</param>
+    /// <param name="connectionId">连接 Id（前端生成，缺省服务端生成）。</param>
+    /// <param name="cancellationToken">请求中止令牌。</param>
+    [HttpGet("tenants/{id}/provisioning-stream")]
+    [Produces(MediaTypeNames.Text.EventStream)]
+    public async Task StreamTenantProvisioning(
+        string id, [FromQuery] string? connectionId, CancellationToken cancellationToken)
+    {
+        if (!idObfuscator.TryDecode(id, out var tenantId) || tenantId <= 0)
+        {
+            throw new UnauthorizedException("租户标识无法建立预配进度通道。");
+        }
+
+        var userIdText = string.IsNullOrWhiteSpace(currentUser.UserId)
+            ? throw new UnauthorizedException("当前用户标识无法建立预配进度通道。")
+            : currentUser.UserId;
+
+        // sub claim 为 Hashids 混淆串：连接注册表以真实 long 用户 Id 为键，此处边界解码
+        if (!idObfuscator.TryDecode(userIdText, out var userId))
+        {
+            throw new UnauthorizedException("当前用户标识无法建立预配进度通道。");
+        }
+
+        var connection = string.IsNullOrWhiteSpace(connectionId)
+            ? Guid.NewGuid().ToString("N")
+            : connectionId;
+
+        Response.ContentType = MediaTypeNames.Text.EventStream;
+        Response.Headers.CacheControl = "no-cache";
+        Response.Headers["X-Accel-Buffering"] = "no";
+
+        // 断线续传：仅补发预配进度类事件（窗外/伪造 Last-Event-ID 按全新连接处理）
+        var lastEventId = ParseLastEventId();
+        var replay = await sseStream.TryReplayAsync(tenantId, lastEventId, cancellationToken).ConfigureAwait(false);
+
+        await using var lease = await sseStream
+            .OpenStreamAsync(userId, connection, tenantId, cancellationToken)
+            .ConfigureAwait(false);
+
+        var heartbeatInterval = TimeSpan.FromSeconds(_sseOptions.HeartbeatSeconds);
+        foreach (var missed in replay.Events)
+        {
+            if (missed.Type == SseEventType.TenantProvisioningProgress)
+            {
+                await WriteEventAsync(missed, cancellationToken).ConfigureAwait(false);
+            }
+        }
+
+        await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            // 排空当前可读事件（同一批事件一次 flush，减少 syscall；非预配进度类事件直接丢弃）
+            var drained = false;
+            while (lease.Reader.TryRead(out var ready))
+            {
+                if (ready.Type != SseEventType.TenantProvisioningProgress)
+                {
+                    continue;
+                }
+
+                await WriteEventAsync(ready, cancellationToken).ConfigureAwait(false);
+                drained = true;
+            }
+
+            if (drained)
+            {
+                await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
+            }
+
+            // 等待下一事件或心跳到期（二者先到先执行）
+            var waitTask = lease.Reader.WaitToReadAsync(cancellationToken).AsTask();
+            var completed = await Task.WhenAny(waitTask, Task.Delay(heartbeatInterval, cancellationToken))
+                .ConfigureAwait(false);
+            if (completed == waitTask)
+            {
+                if (!await waitTask.ConfigureAwait(false))
+                {
+                    break; // 通道已完成（连接被注销）
+                }
+
+                continue;
+            }
+
+            await WriteHeartbeatAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>解析 Last-Event-ID 请求头（非法/缺失按全新连接处理）。</summary>
+    private long? ParseLastEventId()
+        => Request.Headers.TryGetValue("Last-Event-ID", out var values)
+            && long.TryParse(values.ToString(), out var parsed)
+                ? parsed
+                : null;
+
+    /// <summary>写单条事件帧。</summary>
+    /// <param name="sseEvent">事件。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    private async Task WriteEventAsync(SseEvent sseEvent, CancellationToken cancellationToken)
+    {
+        var frame = $"id: {sseEvent.EventId}\nevent: {sseEvent.Type}\ndata: {sseEvent.DataJson}\n\n";
+        await Response.Body.WriteAsync(Encoding.UTF8.GetBytes(frame), cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>写心跳注释帧（SSE 注释以冒号开头，客户端忽略）。</summary>
+    /// <param name="cancellationToken">取消令牌。</param>
+    private async Task WriteHeartbeatAsync(CancellationToken cancellationToken)
+    {
+        await Response.Body.WriteAsync(": ping\n\n"u8.ToArray(), cancellationToken).ConfigureAwait(false);
+        await Response.Body.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 }

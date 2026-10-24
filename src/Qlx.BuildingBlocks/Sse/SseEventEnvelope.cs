@@ -24,6 +24,9 @@ namespace Qlx.BuildingBlocks.Sse;
 /// <param name="BizType">业务引用类型（可空）。</param>
 /// <param name="BizId">业务引用 Id（可空）。</param>
 /// <param name="BizNo">业务引用单号（可空）。</param>
+/// <param name="Step">进度步骤码（可空；租户预配进度事件为 Migrating / Completed / Failed / MaxRetryReached）。</param>
+/// <param name="Progress">进度百分比 0..100（可空；仅进度类事件携带）。</param>
+/// <param name="Status">进度状态码（可空；租户预配事件为 Provisioning / Active / Failed）。</param>
 public sealed record SseEventEnvelope(
     long TenantId,
     long? RecipientUserId,
@@ -31,7 +34,10 @@ public sealed record SseEventEnvelope(
     string Content,
     string? BizType = null,
     string? BizId = null,
-    string? BizNo = null)
+    string? BizNo = null,
+    string? Step = null,
+    int? Progress = null,
+    string? Status = null)
 {
     /// <summary>
     /// 将信封序列化为 <c>DataJson</c> 载荷。

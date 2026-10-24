@@ -38,12 +38,14 @@ public sealed partial class TenantMigrationService(
     ITenantDatabaseResolver resolver,
     TenantMigrationRunner runner,
     IOptions<TenantMigrationOptions> options,
+    TenantProvisioningProgressPublisher progress,
     ILogger<TenantMigrationService> logger) : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider = serviceProvider;
     private readonly ITenantDatabaseResolver _resolver = resolver;
     private readonly TenantMigrationRunner _runner = runner;
     private readonly IOptions<TenantMigrationOptions> _options = options;
+    private readonly TenantProvisioningProgressPublisher _progress = progress;
     private readonly ILogger<TenantMigrationService> _logger = logger;
 
 
@@ -126,6 +128,9 @@ public sealed partial class TenantMigrationService(
         try
         {
             LogTenantStart(tenantId);
+            await _progress.PublishAsync(
+                tenantId, TenantProvisioningSteps.Migrating, 10, TenantProvisioningStatuses.Provisioning, ct)
+                .ConfigureAwait(false);
 
             // 1. 检查是否超过最大重试次数（超过则跳过，标记失败）
             var tenant = await FindTenantWithAttemptCountAsync(repo, tenantId, ct).ConfigureAwait(false);
@@ -136,6 +141,9 @@ public sealed partial class TenantMigrationService(
                     tenantId,
                     $"已达最大尝试次数 {tenant.Value.attemptCount}/{_options.Value.MaxRetryCount}，停止自动重试，等待人工介入",
                     ct).ConfigureAwait(false);
+                await _progress.PublishAsync(
+                    tenantId, TenantProvisioningSteps.MaxRetryReached, 0, TenantProvisioningStatuses.Failed, ct)
+                    .ConfigureAwait(false);
                 return;
             }
 
@@ -154,6 +162,9 @@ public sealed partial class TenantMigrationService(
             // 3. 全部成功
             await repo.MarkTenantActiveAsync(tenantId, ct).ConfigureAwait(false);
             LogTenantDone(tenantId);
+            await _progress.PublishAsync(
+                tenantId, TenantProvisioningSteps.Completed, 100, TenantProvisioningStatuses.Active, ct)
+                .ConfigureAwait(false);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -166,6 +177,11 @@ public sealed partial class TenantMigrationService(
             {
                 // 忽略
             }
+
+            // 失败兜底：即使标记失败本身异常也继续推送（publisher 内部吞异常，不影响主流程）
+            await _progress.PublishAsync(
+                tenantId, TenantProvisioningSteps.Failed, 0, TenantProvisioningStatuses.Failed, ct)
+                .ConfigureAwait(false);
         }
     }
 
@@ -214,6 +230,10 @@ public sealed partial class TenantMigrationService(
                 $"模块 {failedPlan.ModuleCode} 迁移失败 + 清理回滚异常：{cleanupEx.Message}",
                 ct).ConfigureAwait(false);
         }
+
+        await _progress.PublishAsync(
+            tenantId, TenantProvisioningSteps.Failed, 0, TenantProvisioningStatuses.Failed, ct)
+            .ConfigureAwait(false);
     }
 
     private static bool IsFirstModule(ITenantMigrationPlan plan) => plan.DependsOn.Count == 0;
