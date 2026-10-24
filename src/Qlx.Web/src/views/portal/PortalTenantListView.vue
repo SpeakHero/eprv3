@@ -23,6 +23,7 @@ import {
   tenantStatusTones,
 } from '@/types/admin'
 import type { DatabaseMode, MemberLevel, PortalTenant } from '@/types/admin'
+import { ADMIN_ACCOUNT_PATTERN, CREDIT_CODE_PATTERN } from '@/utils/validators'
 
 const searchFields: SearchField[] = [
   {
@@ -69,7 +70,7 @@ const submitting = ref(false)
 const createFieldErrors = ref<Record<string, string> | undefined>()
 const createFields: FormField[] = [
   { prop: 'name', label: '租户名称', type: 'input', required: true, full: true, placeholder: '企业全称（营业执照名称）', maxlength: 128 },
-  { prop: 'taxNo', label: '社会信用代码', type: 'input', required: true, placeholder: '18 位统一社会信用代码（唯一）', maxlength: 32 },
+  { prop: 'taxNo', label: '社会信用代码', type: 'input', required: true, placeholder: '18 位统一社会信用代码（唯一）', maxlength: 32, pattern: CREDIT_CODE_PATTERN, patternMessage: '请填写 18 位统一社会信用代码' },
   {
     prop: 'memberLevel',
     label: '会员等级',
@@ -91,6 +92,8 @@ const createFields: FormField[] = [
     type: 'input',
     required: true,
     placeholder: '手机号或邮箱',
+    pattern: ADMIN_ACCOUNT_PATTERN,
+    patternMessage: '请填写手机号或邮箱',
     hint: '系统将自动匹配既有自然人账号；不存在则创建，并授予 TENANT_ADMIN 角色',
   },
 ]
