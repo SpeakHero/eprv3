@@ -171,8 +171,9 @@ public sealed class TenantDatabase : Qlx.Abstractions.Domain.AuditableEntity
     }
 
     /// <summary>
-    /// 重定位路由行到新的数据库位置（升级独立库 Cutover 时由门户仓储调用，
-    /// 仅改写主机 / 端口 / 库名，凭据与模式字段不在此变更）。
+    /// 重定位路由行到新的数据库位置并切换为独立库模式（升级独立库 Cutover 时由门户仓储调用）。
+    /// 模式必须同步落库：路由解析器按本行 <see cref="DatabaseMode"/> 判定共享/独立分支，
+    /// 仅改主机/库名会造成「租户已独立、路由仍走共享库」的错切（L-02 / e2e-6882）。
     /// </summary>
     /// <param name="dbHost">目标主机。</param>
     /// <param name="dbPort">目标端口。</param>
@@ -185,5 +186,6 @@ public sealed class TenantDatabase : Qlx.Abstractions.Domain.AuditableEntity
         DbHost = dbHost;
         DbPort = dbPort;
         DbName = dbName;
+        DatabaseMode = TenantDatabaseMode.Isolated;
     }
 }
