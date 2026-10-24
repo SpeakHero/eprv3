@@ -113,6 +113,10 @@ public static class OpenIddictConfigurator
         services.AddSingleton<IdentityMappers>();
         // 许可服务 Scoped：消费 PortalDbContext（Cache-Aside 缓存由 ICacheService 承担，DB 命中频率低）
         services.AddScoped<Qlx.Abstractions.Modules.IModuleLicenseService, Services.ModuleLicenseService>();
+        // 菜单扁平查询（R-3）：租户级按许可裁剪，前端负责树组装
+        services.AddScoped<Services.MenuQueryService>();
+        services.AddScoped<Qlx.Abstractions.Modules.ITenantMenuQuery>(
+            static sp => sp.GetRequiredService<Services.MenuQueryService>());
 
         return services;
     }

@@ -90,6 +90,12 @@ public static class PortalServiceCollectionExtensions
         // 门户系统参数服务（业务运行参数阈值 X 在线维护，Cache-Aside）
         services.AddScoped<Qlx.Abstractions.Modules.ISystemParameterProvider, PortalSystemParameterService>();
 
+        // 外部身份提供方（SSO/OAuth2 Client，R-9）：启动期一次性装载到内存注册表；
+        // 未配置任何提供方时注册表为空集，不注册、不报错（真实 IdP 联调延后）
+        services.AddSingleton<ExternalIdentityProviderRegistry>();
+        services.AddScoped<IExternalIdentityProviderSource, PortalExternalIdentityProviderSource>();
+        services.AddHostedService<ExternalIdentityProviderLoader>();
+
         // 系统参数管理（阶段 1D 第一批）：仓储 + 管理服务（分层样板：Controller→Service→Repository）
         services.AddScoped<Repositories.ISystemParameterRepository, Repositories.SystemParameterRepository>();
         services.AddScoped<ISystemParameterAdminService, SystemParameterAdminService>();

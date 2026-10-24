@@ -26,6 +26,9 @@ public static class QlxDataProtectionPurposes
     /// <summary>门户租户数据库凭据（DbUser / DbPassword）加解密 purpose。</summary>
     public const string TenantDatabaseCredentials = "Qlx.Erpv3.TenantDatabaseCredentials";
 
+    /// <summary>外部身份提供方（SSO/OAuth2 Client）客户端密钥加解密 purpose。</summary>
+    public const string ExternalIdentityProviderCredentials = "Qlx.Erpv3.ExternalIdentityProviderCredentials";
+
     // 后续业务域按需追加：
     // public const string UserSensitiveProfile = "Qlx.Erpv3.User.SensitiveProfile";
     // public const string SmtpPassword          = "Qlx.Erpv3.Smtp.Password";

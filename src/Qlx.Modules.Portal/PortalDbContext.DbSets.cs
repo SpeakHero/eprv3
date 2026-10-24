@@ -68,4 +68,7 @@ public sealed partial class PortalDbContext
 
     /// <summary>租户隔离巡检记录集合。</summary>
     public DbSet<TenantIsolationAuditRecord> TenantIsolationAuditRecords { get; private set; } = default!;
+
+    /// <summary>外部身份提供方配置集合（SSO/OAuth2 Client，R-9）。</summary>
+    public DbSet<ExternalIdentityProvider> ExternalIdentityProviders { get; private set; } = default!;
 }

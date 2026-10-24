@@ -446,6 +446,73 @@ namespace Qlx.Modules.Portal.Migrations
                     b.ToTable("por_tenant_members");
                 });
 
+            modelBuilder.Entity("Qlx.Modules.Portal.Domain.Tenancy.ExternalIdentityProvider", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.None);
+
+                    b.Property<string>("Authority")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("nvarchar(512)");
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ClientSecretCipher")
+                        .IsRequired()
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("CreatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ProviderCode")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("ProviderType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Scopes")
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProviderCode")
+                        .IsUnique();
+
+                    b.HasIndex("IsEnabled", "SortOrder");
+
+                    b.ToTable("por_external_identity_providers");
+                });
+
             modelBuilder.Entity("Qlx.Modules.Portal.Domain.Tenancy.LicenseRecord", b =>
                 {
                     b.Property<long>("Id")
