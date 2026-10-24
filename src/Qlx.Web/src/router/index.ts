@@ -52,6 +52,45 @@ const router = createRouter({
       meta: { title: '公共组件演示' },
     },
     {
+      // 标准示例页面体系（mock 驱动，免登录直达；开发参考）
+      // 挂载机制：静态挂载（本路由表直接注册）+ 菜单点击挂载（ExamplesLayout 侧边导航 → RouterView）
+      path: '/dev/examples',
+      component: () => import('@/layouts/ExamplesLayout.vue'),
+      meta: { title: '标准示例' },
+      children: [
+        {
+          path: '',
+          name: 'dev-examples',
+          component: () => import('@/views/examples/ExamplesHomeView.vue'),
+          meta: { title: '示例总览' },
+        },
+        {
+          path: 'crud-list',
+          name: 'dev-examples-crud-list',
+          component: () => import('@/views/examples/CrudListExampleView.vue'),
+          meta: { title: '标准列表页示例' },
+        },
+        {
+          path: 'form',
+          name: 'dev-examples-form',
+          component: () => import('@/views/examples/FormExampleView.vue'),
+          meta: { title: '表单与弹窗示例' },
+        },
+        {
+          path: 'tree-detail',
+          name: 'dev-examples-tree-detail',
+          component: () => import('@/views/examples/TreeDetailExampleView.vue'),
+          meta: { title: '左树右详情示例' },
+        },
+        {
+          path: 'tabs',
+          name: 'dev-examples-tabs',
+          component: () => import('@/views/examples/TabsExampleView.vue'),
+          meta: { title: '多标签页示例' },
+        },
+      ],
+    },
+    {
       path: '/module/:moduleCode/:itemCode',
       name: 'module-item',
       component: () => import('@/views/ModulePlaceholderView.vue'),
