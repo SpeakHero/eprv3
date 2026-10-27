@@ -62,6 +62,8 @@ internal sealed class TestCurrentUserContext(string? userId) : ICurrentUserConte
 
     public string? UserDisplayName { get; } = userId is null ? null : $"用户 {userId}";
 
+    public string? CurrentUserIp => null;
+
     public bool IsAuthenticated => !string.IsNullOrWhiteSpace(UserId);
 }
 

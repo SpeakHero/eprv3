@@ -245,7 +245,7 @@ public sealed partial class SupportMessageService(
             .Skip(skip).Take(take)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return rows.Select(ToMessageInfo).ToList();
+        return [.. rows.Select(ToMessageInfo)];
     }
 
     /// <inheritdoc />
@@ -273,7 +273,7 @@ public sealed partial class SupportMessageService(
             .Skip(skip).Take(take)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return rows.Select(ToSentMessageInfo).ToList();
+        return [.. rows.Select(ToSentMessageInfo)];
     }
 
     // ============ ISupportMessageService（模块门面契约） ============
@@ -336,7 +336,7 @@ public sealed partial class SupportMessageService(
             .Take(pageSize)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return new SupportMessagePage(rows.Select(ToSentMessageInfo).ToList(), total, pageIndex, pageSize);
+        return new SupportMessagePage([.. rows.Select(ToSentMessageInfo)], total, pageIndex, pageSize);
     }
 
     /// <inheritdoc />
@@ -395,11 +395,10 @@ public sealed partial class SupportMessageService(
     {
         var userId = CurrentUserId;
         var items = await GetOrProvisionSubscriptionsAsync(userId, cancellationToken).ConfigureAwait(false);
-        return s_subscriptionKinds
+        return [.. s_subscriptionKinds
             .Select(kind => items.FirstOrDefault(i => i.MsgType == kind))
             .Where(static s => s is not null)
-            .Select(static s => new SupportSubscriptionItem(s!.MsgType, s.ChannelsMask, s.Locked, s.Enabled))
-            .ToList();
+            .Select(static s => new SupportSubscriptionItem(s!.MsgType, s.ChannelsMask, s.Locked, s.Enabled))];
     }
 
     /// <inheritdoc />

@@ -105,7 +105,7 @@ public sealed class SseConnectionManagerTests
         await manager.PushAsync(BuildEvent(OtherTenantId, UserA), TestContext.Current.CancellationToken);
 
         var events = await manager.GetEventsSinceAsync(TenantId, 0, TestContext.Current.CancellationToken);
-        Assert.Equal([1L, 2L], events.Select(static e => e.EventId).ToArray());
+        Assert.Equal([1L, 2L], [.. events.Select(static e => e.EventId)]);
         var otherEvents = await manager.GetEventsSinceAsync(OtherTenantId, 0, TestContext.Current.CancellationToken);
         var other = Assert.Single(otherEvents);
         Assert.Equal(1, other.EventId);
@@ -123,7 +123,7 @@ public sealed class SseConnectionManagerTests
         var replay = await manager.TryReplayAsync(TenantId, 2, TestContext.Current.CancellationToken);
 
         Assert.True(replay.IsInRange);
-        Assert.Equal([3L, 4L], replay.Events.Select(static e => e.EventId).ToArray());
+        Assert.Equal([3L, 4L], [.. replay.Events.Select(static e => e.EventId)]);
     }
 
     [Fact]

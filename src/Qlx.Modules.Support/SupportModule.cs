@@ -95,6 +95,7 @@ public sealed class SupportModule : IModule
             new ServiceJobDefinition(FileTaskCodes.List, "文件列表查询", typeof(FileListHandler).FullName!),
             new ServiceJobDefinition(FileTaskCodes.Delete, "文件删除（回收站）", typeof(FileSoftDeleteHandler).FullName!),
             new ServiceJobDefinition(FileTaskCodes.Restore, "回收站还原", typeof(FileRestoreHandler).FullName!),
+            new ServiceJobDefinition(FileTaskCodes.Purge, "回收站彻底删除", typeof(FilePurgeHandler).FullName!),
             new ServiceJobDefinition(FileTaskCodes.RecycleList, "回收站列表", typeof(FileRecycleListHandler).FullName!),
             new ServiceJobDefinition(FileTaskCodes.AclSet, "文件 ACL 设置", typeof(FileAclSetHandler).FullName!),
             new ServiceJobDefinition(ImportExportTaskCodes.Export, "大数据量导出", typeof(ExportJobHandler).FullName!, ExecutionMode.Async),

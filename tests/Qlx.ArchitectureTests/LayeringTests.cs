@@ -7,9 +7,10 @@
  * 描述：分层引用铁律守护测试，基于程序集引用清单精确断言依赖方向
  */
 
-using System.Reflection;
 using Qlx.Abstractions.Modules;
 using Qlx.BuildingBlocks.Caching;
+
+using System.Reflection;
 
 namespace Qlx.ArchitectureTests;
 
@@ -25,7 +26,7 @@ public sealed class LayeringTests
     [Fact]
     public void AbstractionsMustNotReferenceBuildingBlocksHostOrModules()
     {
-        var referenced = ReferencedQlxAssemblies(s_abstractionsAssembly);
+        string[] referenced = ReferencedQlxAssemblies(s_abstractionsAssembly);
 
         Assert.DoesNotContain(referenced, static name =>
             name.StartsWith("Qlx.BuildingBlocks", StringComparison.Ordinal)
@@ -36,7 +37,7 @@ public sealed class LayeringTests
     [Fact]
     public void BuildingBlocksMustNotReferenceModulesOrHost()
     {
-        var referenced = ReferencedQlxAssemblies(s_buildingBlocksAssembly);
+        string[] referenced = ReferencedQlxAssemblies(s_buildingBlocksAssembly);
 
         Assert.DoesNotContain(referenced, static name =>
             name.StartsWith("Qlx.Modules", StringComparison.Ordinal)
@@ -48,14 +49,13 @@ public sealed class LayeringTests
     {
         // 模块程序集按命名约定 Qlx.Modules.*.dll 发现；当前尚无模块，规则先行落地，
         // 后续任一模块落地即自动纳入守护
-        foreach (var moduleName in EnumerateModuleNames())
+        foreach (string moduleName in EnumerateModuleNames())
         {
             var assembly = Assembly.Load(new AssemblyName(moduleName));
-            var referenced = assembly.GetReferencedAssemblies()
+            string[] referenced = [.. assembly.GetReferencedAssemblies()
                 .Select(static name => name.Name)
                 .Where(static name => name is not null)
-                .Select(static name => name!)
-                .ToArray();
+                .Select(static name => name!)];
 
             Assert.DoesNotContain(referenced, name =>
                 (name.StartsWith("Qlx.Modules", StringComparison.Ordinal) && !string.Equals(name, moduleName, StringComparison.Ordinal))
@@ -69,29 +69,54 @@ public sealed class LayeringTests
     {
         // 后台任务红线：Hangfire 仅允许出现在 Qlx.BuildingBlocks（IJobBackgroundEnqueuer 唯一封装点），
         // 模块一律经 IJobScheduler / IJobBackgroundEnqueuer 抽象入队，禁止直引 Hangfire.* 程序集
-        foreach (var moduleName in EnumerateModuleNames())
+        foreach (string moduleName in EnumerateModuleNames())
         {
             var assembly = Assembly.Load(new AssemblyName(moduleName));
-            var referenced = assembly.GetReferencedAssemblies()
+            string[] referenced = [.. assembly.GetReferencedAssemblies()
                 .Select(static name => name.Name)
                 .Where(static name => name is not null)
-                .Select(static name => name!)
-                .ToArray();
+                .Select(static name => name!)];
 
             Assert.DoesNotContain(referenced, static name =>
                 name.StartsWith("Hangfire", StringComparison.Ordinal));
         }
     }
 
+    [Fact]
+    public void IntegrationEventConsumersMustBePublicForOutboxDynamicDispatch()
+    {
+        // OutboxDispatcher 以 dynamic 跨程序集调用 ConsumeAsync；非公开实现类会被运行时绑定器
+        // 降级为 object（RuntimeBinderException），导致事件派发恒失败。消费者实现类必须 public。
+        var consumerOpenType = typeof(Qlx.Abstractions.Events.IIntegrationEventConsumer<>);
+        foreach (string moduleName in EnumerateModuleNames())
+        {
+            var assembly = Assembly.Load(new AssemblyName(moduleName));
+            var consumers = assembly.GetTypes()
+                .Where(static type => !type.IsAbstract && !type.IsInterface)
+                .Where(type => type.GetInterfaces().Any(contract =>
+                    contract.IsGenericType
+                    && string.Equals(
+                        contract.GetGenericTypeDefinition().FullName,
+                        consumerOpenType.FullName,
+                        StringComparison.Ordinal)))
+                .ToArray();
+
+            Assert.DoesNotContain(consumers, static type => !type.IsPublic);
+        }
+    }
+
     private static string[] EnumerateModuleNames()
-        => Directory
-            .EnumerateFiles(AppContext.BaseDirectory, "Qlx.Modules.*.dll", SearchOption.TopDirectoryOnly)
-            .Select(static file => Path.GetFileNameWithoutExtension(file))
-            .ToArray();
+    {
+        return [.. Directory
+                .EnumerateFiles(AppContext.BaseDirectory, "Qlx.Modules.*.dll", SearchOption.TopDirectoryOnly)
+                .Select(static file => Path.GetFileNameWithoutExtension(file))];
+    }
 
     private static string[] ReferencedQlxAssemblies(Assembly assembly)
-        => [.. assembly.GetReferencedAssemblies()
+    {
+        return [.. assembly.GetReferencedAssemblies()
             .Select(static name => name.Name)
             .Where(static name => name is not null && name.StartsWith("Qlx.", StringComparison.Ordinal))
             .Select(static name => name!)];
+    }
 }

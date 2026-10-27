@@ -15,24 +15,18 @@ namespace Qlx.BuildingBlocks.StateMachines;
 /// </summary>
 /// <typeparam name="TState">状态类型（通常是 enum）。</typeparam>
 /// <typeparam name="TTrigger">触发器类型（通常是 enum）。</typeparam>
-public sealed class StateMachine<TState, TTrigger>
+/// <remarks>
+/// 构造函数。
+/// </remarks>
+/// <param name="initialState">初始状态。</param>
+public sealed class StateMachine<TState, TTrigger>(TState initialState)
     where TState : notnull
     where TTrigger : notnull
 {
     private readonly Dictionary<TState, StateConfig<TState, TTrigger>> _states = [];
-    private TState _current;
-
-    /// <summary>
-    /// 构造函数。
-    /// </summary>
-    /// <param name="initialState">初始状态。</param>
-    public StateMachine(TState initialState)
-    {
-        _current = initialState;
-    }
 
     /// <summary>当前状态。</summary>
-    public TState Current => _current;
+    public TState Current { get; private set; } = initialState;
 
     /// <summary>
     /// 配置指定状态（未配置时自动创建）。
@@ -41,7 +35,7 @@ public sealed class StateMachine<TState, TTrigger>
     /// <returns>配置对象（支持链式调用）。</returns>
     public StateConfig<TState, TTrigger> Configure(TState state)
     {
-        if (!_states.TryGetValue(state, out var config))
+        if (!_states.TryGetValue(state, out StateConfig<TState, TTrigger>? config))
         {
             config = new StateConfig<TState, TTrigger>(state);
             _states[state] = config;
@@ -57,31 +51,39 @@ public sealed class StateMachine<TState, TTrigger>
     /// <returns>迁移结果（成功返回 Success，失败含 ErrorMessage）。</returns>
     public StateTransitionResult<TState> Fire(TTrigger trigger)
     {
-        if (!_states.TryGetValue(_current, out var currentConfig))
-            return StateTransitionResult<TState>.Failure($"未配置当前状态：{_current}");
+        if (!_states.TryGetValue(Current, out StateConfig<TState, TTrigger>? currentConfig))
+        {
+            return StateTransitionResult<TState>.Failure($"未配置当前状态：{Current}");
+        }
 
-        if (!currentConfig.Transitions.TryGetValue(trigger, out var transition))
-            return StateTransitionResult<TState>.Failure($"当前状态 {_current} 不允许触发 {trigger}");
+        if (!currentConfig.Transitions.TryGetValue(trigger, out TransitionConfig<TState>? transition))
+        {
+            return StateTransitionResult<TState>.Failure($"当前状态 {Current} 不允许触发 {trigger}");
+        }
 
         if (transition.Guard is not null && !transition.Guard())
+        {
             return StateTransitionResult<TState>.Failure($"守卫条件拒绝：{trigger}");
+        }
 
-        var previous = _current;
-        var targetState = transition.TargetState;
+        TState previous = Current;
+        TState targetState = transition.TargetState;
 
         // 退出旧状态
         currentConfig.Exit?.Invoke(previous, targetState);
 
-        _current = targetState;
+        Current = targetState;
 
         // 迁移动作
         transition.Action?.Invoke(previous, targetState);
 
         // 进入新状态
-        if (_states.TryGetValue(targetState, out var nextConfig))
+        if (_states.TryGetValue(targetState, out StateConfig<TState, TTrigger>? nextConfig))
+        {
             nextConfig.Enter?.Invoke(previous, targetState);
+        }
 
-        return StateTransitionResult<TState>.Success(_current);
+        return StateTransitionResult<TState>.Success(Current);
     }
 }
 
@@ -101,7 +103,10 @@ public sealed class StateConfig<TState, TTrigger>
     internal Action<TState, TState>? Enter;
     internal Action<TState, TState>? Exit;
 
-    internal StateConfig(TState state) => State = state;
+    internal StateConfig(TState state)
+    {
+        State = state;
+    }
 
     /// <summary>
     /// 允许从本状态经指定触发器迁移到目标状态。
@@ -122,8 +127,11 @@ public sealed class StateConfig<TState, TTrigger>
     /// <returns>当前配置（链式调用）。</returns>
     public StateConfig<TState, TTrigger> Guard(Func<bool> guard)
     {
-        foreach (var transition in Transitions.Values)
+        foreach (TransitionConfig<TState> transition in Transitions.Values)
+        {
             transition.Guard = guard;
+        }
+
         return this;
     }
 
@@ -156,8 +164,11 @@ public sealed class StateConfig<TState, TTrigger>
     /// <returns>当前配置（链式调用）。</returns>
     public StateConfig<TState, TTrigger> OnTransition(Action<TState, TState> action)
     {
-        foreach (var transition in Transitions.Values)
+        foreach (TransitionConfig<TState> transition in Transitions.Values)
+        {
             transition.Action = action;
+        }
+
         return this;
     }
 }
@@ -187,9 +198,15 @@ public sealed record StateTransitionResult<TState>(bool IsSuccess, TState? NewSt
 {
     /// <summary>构造成功结果。</summary>
     /// <param name="newState">迁移后状态。</param>
-    public static StateTransitionResult<TState> Success(TState newState) => new(true, newState, null);
+    public static StateTransitionResult<TState> Success(TState newState)
+    {
+        return new(true, newState, null);
+    }
 
     /// <summary>构造失败结果。</summary>
     /// <param name="message">失败原因。</param>
-    public static StateTransitionResult<TState> Failure(string message) => new(false, default, message);
+    public static StateTransitionResult<TState> Failure(string message)
+    {
+        return new(false, default, message);
+    }
 }

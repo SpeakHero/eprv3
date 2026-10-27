@@ -19,6 +19,7 @@ import {
 } from '@/data/workbench'
 import { fetchPortalWorkbenchOverview } from '@/api/admin'
 import type { PortalWorkbenchOverview } from '@/api/admin'
+import { fetchTenantModules } from '@/api/tenantAdmin'
 import { useAuthStore } from '@/stores/auth'
 import { memberRoleLabel } from '@/types/auth'
 import { formatDate } from '@/utils/format'
@@ -50,11 +51,15 @@ const portalScopes = [
 
 const auth = useAuthStore()
 
+/** 模块目录名称（以租户模块许可接口下发的权威名称为准，导航目录仅兜底）。 */
+const moduleCatalogNames = ref<Record<string, string>>({})
+
 /** 门户管理运营概览（门户管理模式从 /api/portal/admin/workbench/overview 加载）。 */
 const portalOverview = ref<PortalWorkbenchOverview | null>(null)
 const isPortal = computed(() => auth.portalAdminMode)
 
 onMounted(() => {
+  void loadModuleCatalog()
   if (!auth.portalAdminMode) {
     return
   }
@@ -69,13 +74,18 @@ onMounted(() => {
 
 const greeting = computed(() => greetingOf(new Date().getHours()))
 const dateText = computed(() => longDateText(new Date()))
+// X-9 整改：门户管理模式不套用租户角色/进入文案，按 portalAdminMode 分流为平台运营口径
 const roleLabel = computed(() =>
-  memberRoleLabel(auth.user?.memberRole ?? auth.currentTenant?.memberRole),
+  isPortal.value
+    ? '平台管理员'
+    : memberRoleLabel(auth.user?.memberRole ?? auth.currentTenant?.memberRole),
 )
 const lastLoginText = computed(() =>
-  auth.currentTenant?.lastLoginAt
-    ? `最近进入 ${formatLastLogin(auth.currentTenant.lastLoginAt)}`
-    : '首次进入本企业',
+  isPortal.value
+    ? '平台运营视图'
+    : auth.currentTenant?.lastLoginAt
+      ? `最近进入 ${formatLastLogin(auth.currentTenant.lastLoginAt)}`
+      : '首次进入本企业',
 )
 
 /** 是否可进入企业管理（租户管理员且非门户管理模式）。 */
@@ -93,13 +103,28 @@ const managementEntry = {
   moduleName: '组织 · 成员 · 角色权限',
 }
 
+/** 加载许可模块的权威名称（租户上下文才有 /api/tenant/modules；失败回退导航目录）。 */
+async function loadModuleCatalog(): Promise<void> {
+  if (auth.portalAdminMode || !auth.tenantToken) {
+    return
+  }
+  try {
+    const modules = await fetchTenantModules()
+    moduleCatalogNames.value = Object.fromEntries(
+      modules.filter((item) => item.licensed).map((item) => [item.code, item.name]),
+    )
+  } catch {
+    // 许可接口不可用时保持导航目录兜底名称
+  }
+}
+
 /** 已授权模块（许可未下发时按目录全量展示）。 */
 const licensedModuleNames = computed(() => {
   const codes = auth.licensedModules.length
     ? auth.licensedModules
     : navModules.map((module) => module.code)
   return codes
-    .map((code) => findModule(code)?.name)
+    .map((code) => moduleCatalogNames.value[code] ?? findModule(code)?.name)
     .filter((name): name is string => Boolean(name))
 })
 

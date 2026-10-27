@@ -1,19 +1,23 @@
 /*
  * 所属公司：四川淇利馨集团有限公司
  * 作者：SpeakHero（491960352@qq.com）
- * 版本：1.0.0 beta
+ * 版本：1.2.0 beta
  * 创建时间：2026-10-21 19:00:00 +08:00 中国标准时间 星期三
- * 修改时间：2026-10-21 19:00:00 +08:00 中国标准时间 星期三
+ * 修改时间：2026-10-26 23:20:00 +08:00 中国标准时间 星期一
  * 描述：租户管理服务实现：列表 / 新建（联动数据库预配 + 默认许可 + 初始管理员）/ 启停 / 详情 / 授权保存 / 成员
+ *       入参静态校验由 ValidationDispatchProxy 在服务方法入口自动执行（接口参数 [Validate] 标记驱动），
+ *       本实现只保留有状态校验（税号唯一性、未知模块编码、数据库模式兜底）。
  */
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+
 using Qlx.Abstractions.Audit;
 using Qlx.Abstractions.Constants;
 using Qlx.Abstractions.Domain;
 using Qlx.Abstractions.Exceptions;
 using Qlx.Abstractions.Tenancy;
+using Qlx.BuildingBlocks.Api;
 using Qlx.BuildingBlocks.Caching;
 using Qlx.BuildingBlocks.Ids;
 using Qlx.BuildingBlocks.MultiTenancy;
@@ -54,26 +58,21 @@ public sealed partial class PortalTenantAdminService(
     /// <summary>租户编码最大长度。</summary>
     private const int MaxTenantCodeLength = PortalConstants.Validation.MaxTenantCodeLength;
 
-    /// <summary>统一社会信用代码长度（18 位）。</summary>
-    private const int TaxNoLength = PortalConstants.Validation.TaxNoLength;
-
     /// <inheritdoc />
-    public async Task<PortalPagedResult<PortalTenantItem>> QueryAsync(
+    public async Task<PagedResult<PortalTenantItem>> QueryAsync(
         PortalTenantQueryRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var page = await tenants.QueryAsync(
+        PagedResult<Tenant> page = await tenants.QueryAsync(
             request.Keyword, request.Status, request.DatabaseMode, request, cancellationToken).ConfigureAwait(false);
 
-        var ids = page.Items.Select(t => t.Id).ToList();
-        var lastLogins = await tenants.GetLastLoginTimesAsync(ids, cancellationToken).ConfigureAwait(false);
+        List<long> ids = [.. page.Items.Select(t => t.Id)];
+        IReadOnlyDictionary<long, DateTimeOffset?> lastLogins = await tenants.GetLastLoginTimesAsync(ids, cancellationToken).ConfigureAwait(false);
 
-        var items = page.Items
-            .Select(t => PortalAdminMapper.ToTenantItem(t, obfuscator, lastLogins.GetValueOrDefault(t.Id)))
-            .ToList();
-
-        return new PortalPagedResult<PortalTenantItem>(items, page.TotalCount);
+        return new PagedResult<PortalTenantItem>(
+            [.. page.Items.Select(t => PortalAdminMapper.ToTenantItem(t, obfuscator, lastLogins.GetValueOrDefault(t.Id)))],
+            page.TotalCount, page.Page, page.PageSize);
     }
 
     /// <inheritdoc />
@@ -81,14 +80,13 @@ public sealed partial class PortalTenantAdminService(
         CreateTenantRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
-        ValidateCreateRequest(request);
+        // 入参格式校验由接口参数 [Validate] 经 ValidationDispatchProxy 在方法入口完成（唯一性等有状态校验保留在此）
 
         // 租户编码由系统自动生成：租户名完整拼音，冲突追加 001/002...
-        var tenantCode = await encodingGenerator.GenerateAsync(
+        string tenantCode = await encodingGenerator.GenerateAsync(
             request.Name,
             scope: "tenant",
-            uniquenessChecker: async (code, ct2) =>
-                await tenants.CodeExistsAsync(code, ct2).ConfigureAwait(false),
+            uniquenessChecker: tenants.CodeExistsAsync,
             options: new EncodingGenerationOptions
             {
                 Prefix = string.Empty,
@@ -99,20 +97,20 @@ public sealed partial class PortalTenantAdminService(
             },
             cancellationToken).ConfigureAwait(false);
 
-        var taxNo = request.TaxNo.Trim();
+        string taxNo = request.TaxNo.Trim();
 
         if (await tenants.TaxNoExistsAsync(taxNo, cancellationToken).ConfigureAwait(false))
         {
             throw new ConflictException($"统一社会信用代码 {taxNo} 已存在", PortalConstants.ErrorCodes.TenantTaxNoExists);
         }
 
-        var options = provisioning.Value;
-        var databaseMode = ResolveDatabaseMode(request.DatabaseMode, options.DefaultDatabaseMode);
+        PortalProvisioningOptions options = provisioning.Value;
+        TenantDatabaseMode databaseMode = ResolveDatabaseMode(request.DatabaseMode, options.DefaultDatabaseMode);
 
         // 1. 租户主体 + 注册信息（套餐编码存小写，与前端会员等级一一对应）
-        var tenant = new Tenant(tenantCode, request.Name.Trim());
+        Tenant tenant = new(tenantCode, request.Name.Trim());
         tenant.AssignId(snowflake.NextId());
-        var isTrial = string.Equals(request.MemberLevel, PortalConstants.MemberLevels.Trial, StringComparison.Ordinal);
+        bool isTrial = string.Equals(request.MemberLevel, PortalConstants.MemberLevels.Trial, StringComparison.Ordinal);
         tenant.SetRegistrationProfile(
             taxNo,
             PortalAdminMapper.ToPlanCode(request.MemberLevel),
@@ -120,7 +118,7 @@ public sealed partial class PortalTenantAdminService(
 
         // 2. 路由行：共享模式指向租户共享库（凭据留空，连接统一来自 SharedDatabaseOptions）；
         //    独立模式按预配参数生成独立库名，凭据由预配流程写入（当前空 → Windows 集成认证）
-        var database = databaseMode == TenantDatabaseMode.Shared
+        TenantDatabase database = databaseMode == TenantDatabaseMode.Shared
             ? new TenantDatabase(
                 tenant, TenantDatabaseMode.Shared,
                 sharedDatabase.Value.DbHost, sharedDatabase.Value.DbPort, sharedDatabase.Value.DbName)
@@ -140,23 +138,22 @@ public sealed partial class PortalTenantAdminService(
         }
 
         // 3. 默认模块许可（配置默认项 + 必备模块）
-        var definitions = await modules.ListDefinitionsAsync(cancellationToken).ConfigureAwait(false);
-        var moduleCodes = ResolveInitialModuleCodes(definitions, options.DefaultModuleCodes);
-        var moduleMap = definitions.ToDictionary(d => d.ModuleCode, StringComparer.Ordinal);
-        var tenantModules = moduleCodes
+        IReadOnlyList<ModuleDefinitionRow> definitions = await modules.ListDefinitionsAsync(cancellationToken).ConfigureAwait(false);
+        List<string> moduleCodes = ResolveInitialModuleCodes(definitions, options.DefaultModuleCodes);
+        Dictionary<string, ModuleDefinitionRow> moduleMap = definitions.ToDictionary(d => d.ModuleCode, StringComparer.Ordinal);
+        List<TenantModule> tenantModules = [.. moduleCodes
             .Where(moduleMap.ContainsKey)
             .Select(code =>
             {
-                var module = new TenantModule(tenant, code, moduleMap[code].CurrentVersion);
+                TenantModule module = new(tenant, code, moduleMap[code].CurrentVersion);
                 module.AssignId(snowflake.NextId());
                 tenant.AddModule(module);
                 return module;
-            })
-            .ToList();
+            })];
 
         // 4. 初始租户管理员（已有门户账号则直接建立成员关系；否则创建待激活账号，由门户重置密码后启用）
-        var adminAccount = request.AdminAccount.Trim();
-        var admin = await users.FindTrackedByAccountAsync(adminAccount, cancellationToken).ConfigureAwait(false);
+        string adminAccount = request.AdminAccount.Trim();
+        PortalUser? admin = await users.FindTrackedByAccountAsync(adminAccount, cancellationToken).ConfigureAwait(false);
         if (admin is null)
         {
             admin = new PortalUser(adminAccount, PortalConstants.Labels.InitialAdminDisplayName);
@@ -164,7 +161,7 @@ public sealed partial class PortalTenantAdminService(
             await users.AddAsync(admin, cancellationToken).ConfigureAwait(false);
         }
 
-        var member = new TenantMember(tenant.Id, admin.Id, TenantMemberRole.TenantAdmin)
+        TenantMember member = new(tenant.Id, admin.Id, TenantMemberRole.TenantAdmin)
         {
             DisplayNameInTenant = admin.DisplayName,
             JoinAt = DateTimeOffset.UtcNow,
@@ -172,13 +169,12 @@ public sealed partial class PortalTenantAdminService(
         member.AssignId(snowflake.NextId());
 
         // 5. 授权记录（新建即授权，便于授权记录页追溯）
-        var operatorName = currentUser.UserDisplayName ?? currentUser.UserName ?? PortalConstants.Labels.OperatorDisplayFallback;
-        var records = tenantModules
+        string operatorName = currentUser.UserDisplayName ?? currentUser.UserName ?? PortalConstants.Labels.OperatorDisplayFallback;
+        List<LicenseRecord> records = [.. tenantModules
             .Select(m => new LicenseRecord(
                 tenant, m.ModuleCode, moduleMap[m.ModuleCode].DisplayName,
-                LicenseAction.Granted, operatorName, "新建租户默认授权"))
-            .ToList();
-        foreach (var record in records)
+                LicenseAction.Granted, operatorName, "新建租户默认授权"))];
+        foreach (LicenseRecord? record in records)
         {
             record.AssignId(snowflake.NextId());
         }
@@ -209,7 +205,7 @@ public sealed partial class PortalTenantAdminService(
     /// <inheritdoc />
     public async Task<PortalTenantItem> ToggleStatusAsync(string tenantId, CancellationToken cancellationToken)
     {
-        var tenant = await FindTrackedTenantAsync(tenantId, cancellationToken).ConfigureAwait(false);
+        Tenant tenant = await FindTrackedTenantAsync(tenantId, cancellationToken).ConfigureAwait(false);
 
         switch (tenant.Status)
         {
@@ -240,17 +236,17 @@ public sealed partial class PortalTenantAdminService(
     public async Task<PortalTenantDetailResponse> GetDetailAsync(
         string tenantId, CancellationToken cancellationToken)
     {
-        var id = DecodeId(tenantId, PortalConstants.ResourceNames.Tenant);
-        var tenant = await tenants.FindWithDetailsAsync(id, cancellationToken).ConfigureAwait(false)
+        long id = DecodeId(tenantId, PortalConstants.ResourceNames.Tenant);
+        Tenant tenant = await tenants.FindWithDetailsAsync(id, cancellationToken).ConfigureAwait(false)
             ?? throw new NotFoundException(PortalConstants.ResourceNames.Tenant, tenantId);
 
-        var lastLogins = await tenants.GetLastLoginTimesAsync([id], cancellationToken).ConfigureAwait(false);
-        var records = await tenants.QueryLicenseRecordsAsync(id, PortalConstants.Validation.DefaultLicenseRecordLimit, cancellationToken).ConfigureAwait(false);
+        IReadOnlyDictionary<long, DateTimeOffset?> lastLogins = await tenants.GetLastLoginTimesAsync([id], cancellationToken).ConfigureAwait(false);
+        IReadOnlyList<LicenseRecord> records = await tenants.QueryLicenseRecordsAsync(id, PortalConstants.Validation.DefaultLicenseRecordLimit, cancellationToken).ConfigureAwait(false);
 
         return new PortalTenantDetailResponse(
             PortalAdminMapper.ToTenantItem(tenant, obfuscator, lastLogins.GetValueOrDefault(id)),
             PortalAdminMapper.ToDatabaseSummary(tenant),
-            records.Select(r => PortalAdminMapper.ToLicenseRecordItem(r, obfuscator)).ToList());
+            [.. records.Select(r => PortalAdminMapper.ToLicenseRecordItem(r, obfuscator))]);
     }
 
     /// <inheritdoc />
@@ -258,34 +254,35 @@ public sealed partial class PortalTenantAdminService(
         string tenantId, SaveTenantLicenseRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        // ModuleCodes 必填等静态规则由接口参数 [Validate] 经 ValidationDispatchProxy 在方法入口完成
 
-        var id = DecodeId(tenantId, PortalConstants.ResourceNames.Tenant);
-        var tenant = await tenants.FindTrackedWithModulesAsync(id, cancellationToken).ConfigureAwait(false)
+        long id = DecodeId(tenantId, PortalConstants.ResourceNames.Tenant);
+        Tenant tenant = await tenants.FindTrackedWithModulesAsync(id, cancellationToken).ConfigureAwait(false)
             ?? throw new NotFoundException(PortalConstants.ResourceNames.Tenant, tenantId);
 
-        var definitions = await modules.ListDefinitionsAsync(cancellationToken).ConfigureAwait(false);
-        var definitionMap = definitions.ToDictionary(d => d.ModuleCode, StringComparer.Ordinal);
+        IReadOnlyList<ModuleDefinitionRow> definitions = await modules.ListDefinitionsAsync(cancellationToken).ConfigureAwait(false);
+        Dictionary<string, ModuleDefinitionRow> definitionMap = definitions.ToDictionary(d => d.ModuleCode, StringComparer.Ordinal);
 
-        var requested = new HashSet<string>(request.ModuleCodes ?? [], StringComparer.Ordinal);
-        var unknown = requested.Where(c => !definitionMap.ContainsKey(c)).ToList();
+        HashSet<string> requested = new(request.ModuleCodes ?? [], StringComparer.Ordinal);
+        List<string> unknown = [.. requested.Where(c => !definitionMap.ContainsKey(c))];
         if (unknown.Count > 0)
         {
             throw new ValidationException("moduleCodes", $"模块编码不存在：{string.Join(',', unknown)}");
         }
 
         // 必备模块不可停用：自动补入（如系统管理 portal）
-        foreach (var mandatory in definitions.Where(d => d.IsMandatory && d.Licensable))
+        foreach (ModuleDefinitionRow? mandatory in definitions.Where(d => d.IsMandatory && d.Licensable))
         {
-            requested.Add(mandatory.ModuleCode);
+            _ = requested.Add(mandatory.ModuleCode);
         }
 
-        var operatorName = currentUser.UserDisplayName ?? currentUser.UserName ?? PortalConstants.Labels.OperatorDisplayFallback;
-        var remark = request.Remark?.Trim() ?? string.Empty;
-        var records = new List<LicenseRecord>();
+        string operatorName = currentUser.UserDisplayName ?? currentUser.UserName ?? PortalConstants.Labels.OperatorDisplayFallback;
+        string remark = request.Remark?.Trim() ?? string.Empty;
+        List<LicenseRecord> records = [];
 
-        foreach (var module in tenant.Modules)
+        foreach (TenantModule module in tenant.Modules)
         {
-            var shouldEnable = requested.Contains(module.ModuleCode);
+            bool shouldEnable = requested.Contains(module.ModuleCode);
             if (shouldEnable && module.Status != TenantModuleStatus.Enabled)
             {
                 module.Enable();
@@ -302,14 +299,14 @@ public sealed partial class PortalTenantAdminService(
             }
         }
 
-        foreach (var code in requested)
+        foreach (string code in requested)
         {
             if (tenant.Modules.Any(m => string.Equals(m.ModuleCode, code, StringComparison.Ordinal)))
             {
                 continue;
             }
 
-            var module = new TenantModule(tenant, code, definitionMap[code].CurrentVersion);
+            TenantModule module = new(tenant, code, definitionMap[code].CurrentVersion);
             // Id 由 EF 值生成器（SnowflakeIdValueGenerator）在 SaveChanges 时统一赋值，
             // 禁止显式 AssignId——在 ValueGenerated.OnAdd + 非临时值生成器配置下，
             // 显式置键会让 EF 误判实体为已存在，生成 UPDATE 而非 INSERT，触发并发异常。
@@ -324,7 +321,7 @@ public sealed partial class PortalTenantAdminService(
 
         // C-5 失效优先：写路径只删缓存不写缓存，事务提交后删除许可缓存，
         // 后续登录/鉴权读请求经 ModuleLicenseService 的 Cache-Aside 重新构建。
-        await cache.RemoveAsync(ModuleLicenseService.BuildCacheKey(tenant.Id), cancellationToken).ConfigureAwait(false);
+        _ = await cache.RemoveAsync(ModuleLicenseService.BuildCacheKey(tenant.Id), cancellationToken).ConfigureAwait(false);
 
         await audit.CaptureOperationAsync(new OperationLogEntry(
             snowflake.NextId(), QlxAuditConstants.PortalModuleCode, PortalConstants.AuditOperations.SaveTenantLicense,
@@ -337,18 +334,18 @@ public sealed partial class PortalTenantAdminService(
     public async Task<IReadOnlyList<TenantMembershipItem>> ListMembersAsync(
         string tenantId, CancellationToken cancellationToken)
     {
-        var id = DecodeId(tenantId, PortalConstants.ResourceNames.Tenant);
-        var tenant = await tenants.FindWithDetailsAsync(id, cancellationToken).ConfigureAwait(false)
+        long id = DecodeId(tenantId, PortalConstants.ResourceNames.Tenant);
+        Tenant tenant = await tenants.FindWithDetailsAsync(id, cancellationToken).ConfigureAwait(false)
             ?? throw new NotFoundException(PortalConstants.ResourceNames.Tenant, tenantId);
 
-        var rows = await tenants.ListMembersAsync(id, cancellationToken).ConfigureAwait(false);
-        return rows.Select(r => PortalAdminMapper.ToMembershipItem(r, tenant, obfuscator)).ToList();
+        IReadOnlyList<TenantMemberRow> rows = await tenants.ListMembersAsync(id, cancellationToken).ConfigureAwait(false);
+        return [.. rows.Select(r => PortalAdminMapper.ToMembershipItem(r, tenant, obfuscator))];
     }
 
     /// <summary>按混淆 Id 取跟踪态租户，非法 Id 视为不存在。</summary>
     private async Task<Tenant> FindTrackedTenantAsync(string tenantId, CancellationToken cancellationToken)
     {
-        var id = DecodeId(tenantId, PortalConstants.ResourceNames.Tenant);
+        long id = DecodeId(tenantId, PortalConstants.ResourceNames.Tenant);
         return await tenants.FindTrackedAsync(id, cancellationToken).ConfigureAwait(false)
             ?? throw new NotFoundException(PortalConstants.ResourceNames.Tenant, tenantId);
     }
@@ -356,89 +353,50 @@ public sealed partial class PortalTenantAdminService(
     /// <summary>解码对外 Id（非法或越界一律视为资源不存在，避免暴露内部编号规律）。</summary>
     private long DecodeId(string publicId, string resourceType)
     {
-        if (!obfuscator.TryDecode(publicId, out var id) || id <= 0)
-        {
-            throw new NotFoundException(resourceType, publicId);
-        }
-
-        return id;
-    }
-
-    /// <summary>新建租户入参校验（租户编码由系统自动生成，无需前端传入与校验）。</summary>
-    private static void ValidateCreateRequest(CreateTenantRequest request)
-    {
-        var errors = new List<FieldError>();
-
-        if (string.IsNullOrWhiteSpace(request.Name) || request.Name.Trim().Length > PortalConstants.Validation.MaxTenantNameLength)
-        {
-            errors.Add(new FieldError("name", $"企业全称必填且不超过 {PortalConstants.Validation.MaxTenantNameLength} 字"));
-        }
-
-        var taxNo = request.TaxNo?.Trim() ?? string.Empty;
-        if (taxNo.Length != TaxNoLength || !taxNo.All(c => char.IsAsciiLetterUpper(c) || char.IsAsciiDigit(c)))
-        {
-            errors.Add(new FieldError("taxNo", "统一社会信用代码须为 18 位大写字母或数字"));
-        }
-
-        if (!PortalConstants.MemberLevels.All.Contains(request.MemberLevel, StringComparer.Ordinal))
-        {
-            errors.Add(new FieldError("memberLevel", "会员等级须为 Trial / Standard / Professional / Flagship"));
-        }
-
-        if (string.IsNullOrWhiteSpace(request.AdminAccount) || request.AdminAccount.Trim().Length > PortalConstants.Validation.MaxAdminAccountLength)
-        {
-            errors.Add(new FieldError("adminAccount",
-                $"初始管理员登录账号必填且不超过 {PortalConstants.Validation.MaxAdminAccountLength} 字"));
-        }
-
-        if (errors.Count > 0)
-        {
-            throw new ValidationException(errors);
-        }
+        return !obfuscator.TryDecode(publicId, out long id) || id <= 0 ? throw new NotFoundException(resourceType, publicId) : id;
     }
 
     /// <summary>租户状态的中文名（仅用于冲突等错误消息文案，与展示契约无关）。</summary>
-    private static string ToStatusDisplayName(TenantStatus status) => status switch
+    private static string ToStatusDisplayName(TenantStatus status)
     {
-        TenantStatus.Active => "启用中",
-        TenantStatus.Disabled => "已停用",
-        TenantStatus.Provisioning => "预配中",
-        TenantStatus.ProvisioningFailed => "预配失败",
-        TenantStatus.GracePeriod => "宽限期",
-        TenantStatus.Archived => "已归档",
-        TenantStatus.Deleted => "已删除",
-        _ => status.ToString(),
-    };
+        return status switch
+        {
+            TenantStatus.Active => "启用中",
+            TenantStatus.Disabled => "已停用",
+            TenantStatus.Provisioning => "预配中",
+            TenantStatus.ProvisioningFailed => "预配失败",
+            TenantStatus.GracePeriod => "宽限期",
+            TenantStatus.Archived => "已归档",
+            TenantStatus.Deleted => "已删除",
+            _ => status.ToString(),
+        };
+    }
 
     /// <summary>生成独立库名（编码中的短横线替换为下划线）。</summary>
     private static string BuildDatabaseName(string prefix, string tenantCode)
-        => prefix + tenantCode.Replace('-', '_');
+    {
+        return prefix + tenantCode.Replace('-', '_');
+    }
 
     /// <summary>
     /// 解析新建请求的数据库模式：未指定取配置默认值；非法字面量视为参数错误。
     /// </summary>
     private static TenantDatabaseMode ResolveDatabaseMode(string? requested, TenantDatabaseMode defaultMode)
     {
-        if (string.IsNullOrWhiteSpace(requested))
-        {
-            return defaultMode;
-        }
-
-        if (Enum.TryParse<TenantDatabaseMode>(requested.Trim(), ignoreCase: true, out var mode)
-            && Enum.IsDefined(mode))
-        {
-            return mode;
-        }
-
-        throw new ValidationException("databaseMode", "数据库模式须为 Shared 或 Isolated");
+        return string.IsNullOrWhiteSpace(requested)
+            ? defaultMode
+            : Enum.TryParse<TenantDatabaseMode>(requested.Trim(), ignoreCase: true, out TenantDatabaseMode mode)
+            && Enum.IsDefined(mode)
+            ? mode
+            : throw new ValidationException("databaseMode", "数据库模式须为 Shared 或 Isolated");
     }
 
     /// <summary>合并默认授权模块与必备模块（去重，保持稳定顺序）。</summary>
     private static List<string> ResolveInitialModuleCodes(
         IReadOnlyList<ModuleDefinitionRow> definitions, IReadOnlyList<string> defaults)
     {
-        var codes = new List<string>();
-        foreach (var code in defaults.Concat(definitions.Where(d => d.IsMandatory).Select(d => d.ModuleCode)))
+        List<string> codes = [];
+        foreach (string? code in defaults.Concat(definitions.Where(d => d.IsMandatory).Select(d => d.ModuleCode)))
         {
             if (!codes.Contains(code, StringComparer.Ordinal))
             {
@@ -452,7 +410,9 @@ public sealed partial class PortalTenantAdminService(
     /// <summary>取模块显示名（定义缺失时回落编码）。</summary>
     private static string GetModuleName(
         Dictionary<string, ModuleDefinitionRow> definitions, string moduleCode)
-        => definitions.TryGetValue(moduleCode, out var definition) ? definition.DisplayName : moduleCode;
+    {
+        return definitions.TryGetValue(moduleCode, out ModuleDefinitionRow? definition) ? definition.DisplayName : moduleCode;
+    }
 
     /// <summary>新建租户成功日志。</summary>
     [LoggerMessage(Level = LogLevel.Information,

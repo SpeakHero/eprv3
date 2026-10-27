@@ -1,10 +1,11 @@
 /*
  * 所属公司：四川淇利馨集团有限公司
  * 作者：SpeakHero（491960352@qq.com）
- * 版本：1.0.0 beta
+ * 版本：1.1.0 beta
  * 创建时间：2026-10-21 19:20:00 +08:00 中国标准时间 星期三
- * 修改时间：2026-10-21 19:20:00 +08:00 中国标准时间 星期三
+ * 修改时间：2026-10-26 23:20:00 +08:00 中国标准时间 星期一
  * 描述：门户用户管理服务实现：列表 / 启停 / 重置密码 / 详情（成员关系 + 登录日志取自平台日志中心）
+ *       重置密码入参的密码策略校验由 ValidationDispatchProxy 按 IValidatableObject 接口自动识别并在方法入口执行
  */
 
 using Microsoft.AspNetCore.Identity;
@@ -14,6 +15,7 @@ using Qlx.Abstractions.Audit;
 using Qlx.Abstractions.Constants;
 using Qlx.Abstractions.Domain;
 using Qlx.Abstractions.Exceptions;
+using Qlx.BuildingBlocks.Api;
 using Qlx.BuildingBlocks.Caching;
 using Qlx.BuildingBlocks.Ids;
 using Qlx.Modules.Portal.Auth;
@@ -45,7 +47,7 @@ public sealed partial class PortalUserAdminService(
     private readonly ILogger<PortalUserAdminService> _logger = logger;
 
     /// <inheritdoc />
-    public async Task<PortalPagedResult<PortalUserItem>> QueryAsync(
+    public async Task<PagedResult<PortalUserItem>> QueryAsync(
         PortalUserQueryRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -53,9 +55,9 @@ public sealed partial class PortalUserAdminService(
         var page = await users.QueryAsync(
             request.Keyword, request.Status, request, cancellationToken).ConfigureAwait(false);
 
-        return new PortalPagedResult<PortalUserItem>(
-            page.Items.Select(u => PortalAdminMapper.ToUserItem(u, obfuscator)).ToList(),
-            page.TotalCount);
+        return new PagedResult<PortalUserItem>(
+            [.. page.Items.Select(u => PortalAdminMapper.ToUserItem(u, obfuscator))],
+            page.TotalCount, page.Page, page.PageSize);
     }
 
     /// <inheritdoc />
@@ -93,9 +95,9 @@ public sealed partial class PortalUserAdminService(
         string userId, ResetPortalUserPasswordRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        // 新密码复杂度由 ResetPortalUserPasswordRequest 的 IValidatableObject 校验：
+        // HTTP 入口走 MVC 模型验证；非 HTTP 入口由 ValidationDispatchProxy 按接口自动识别并在方法入口校验（经代理上下文解析 QlxAuthOptions）
         var options = authOptions.Value;
-
-        PasswordPolicyValidator.ValidateComplexity(request.NewPassword, options);
 
         var user = await FindTrackedUserAsync(userId, cancellationToken).ConfigureAwait(false);
 
@@ -121,10 +123,10 @@ public sealed partial class PortalUserAdminService(
 
         await users.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        // 清理登录失败计数与锁定标记，避免重置后仍被旧锁定拦截
-        await cache.RemoveAsync(QlxAuthConstants.AuthCacheKeys.PasswordFailPrefix + user.LoginAccount, cancellationToken)
+        // 清理登录失败计数与锁定标记，避免重置后仍被旧锁定拦截（键经哈希构建，与登录侧一致）
+        await cache.RemoveAsync(AuthSecurityCacheKeys.PasswordFail(user.LoginAccount), cancellationToken)
             .ConfigureAwait(false);
-        await cache.RemoveAsync(QlxAuthConstants.AuthCacheKeys.LockoutPrefix + user.LoginAccount, cancellationToken)
+        await cache.RemoveAsync(AuthSecurityCacheKeys.Lockout(user.LoginAccount), cancellationToken)
             .ConfigureAwait(false);
 
         LogPasswordReset(user.LoginAccount);
@@ -158,7 +160,7 @@ public sealed partial class PortalUserAdminService(
 
         return new PortalUserDetailResponse(
             PortalAdminMapper.ToUserItem(user, obfuscator),
-            memberships.Select(m => PortalAdminMapper.ToMembershipItem(m, obfuscator)).ToList(),
+            [.. memberships.Select(m => PortalAdminMapper.ToMembershipItem(m, obfuscator))],
             logs);
     }
 

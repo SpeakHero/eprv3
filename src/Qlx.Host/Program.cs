@@ -1,19 +1,22 @@
 /*
  * 所属公司：四川淇利馨集团有限公司
  * 作者：SpeakHero（491960352@qq.com）
- * 版本：1.0.1 beta
+ * 版本：1.0.2 beta
  * 创建时间：2026-10-20 22:30:00 +08:00 中国标准时间 星期二
- * 修改时间：2026-10-23 11:40:00 +08:00 中国标准时间 星期五
+ * 修改时间：2026-10-27 10:30:00 +08:00 中国标准时间 星期二
  * 描述：ERPv3 宿主入口，装配四级配置、技术底座组件、多租户管线、模块与基础端点
  */
 
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 
 using Qlx.Abstractions.Constants;
 using Qlx.Abstractions.Tenancy;
+using Qlx.BuildingBlocks.Ai;
 using Qlx.BuildingBlocks.Api;
 using Qlx.BuildingBlocks.Audit;
 using Qlx.BuildingBlocks.Auth;
+using Qlx.BuildingBlocks.Authorization;
 using Qlx.BuildingBlocks.Caching;
 using Qlx.BuildingBlocks.Configuration;
 using Qlx.BuildingBlocks.EventBus;
@@ -29,6 +32,8 @@ using Qlx.BuildingBlocks.Web;
 using Qlx.Host.OpenApi;
 using Qlx.Modules.Bas;
 using Qlx.Modules.Portal;
+using Qlx.Modules.Stk;
+using Qlx.Modules.Wms;
 
 namespace Qlx.Host;
 
@@ -60,6 +65,7 @@ public static class Program
             .AddQlxMultiTenancy(builder.Configuration, builder.Environment)
             .AddQlxTenantLog(builder.Configuration)
             .AddQlxCaching(builder.Configuration)
+            .AddQlxAi(builder.Configuration)
             .AddQlxIds(builder.Configuration)
             .AddQlxNumbering(builder.Configuration)
             .AddQlxEventBus(builder.Configuration)
@@ -67,10 +73,14 @@ public static class Program
             .AddQlxTenantSecurity(builder.Configuration)
             .AddQlxPortal(builder.Configuration, builder.Environment)
             .AddQlxBas()
+            .AddQlxWms()
+            .AddQlxStk()
             .AddQlxAuth(builder.Configuration, builder.Environment)
+            .AddQlxEndpointPolicies(builder.Configuration)
             .AddQlxJobs(builder.Configuration)
             .AddQlxModules(builder.Configuration)
-            .AddQlxCors(builder.Configuration);
+            .AddQlxCors(builder.Configuration)
+            .AddQlxExceptionHandling();
 
         // 认证端点 / 业务 API 控制器（OpenIddict Token/Revoke 端点直通 + /api/portal/me）
         // 全局 JSON 约定：业务 Id（long / long? 且命名符合 Id 约定）由 QlxIdJsonMetadata 自动混淆；
@@ -80,9 +90,14 @@ public static class Program
             .AddApplicationPart(typeof(Qlx.Modules.Portal.PortalDbContext).Assembly)
             .AddApplicationPart(typeof(Qlx.Modules.Bas.BasTenantDbContext).Assembly)
             .AddApplicationPart(typeof(Qlx.Modules.Support.SupportTenantDbContext).Assembly)
+            .AddApplicationPart(typeof(Qlx.Modules.Wms.WmsTenantDbContext).Assembly)
+            .AddApplicationPart(typeof(Qlx.Modules.Stk.StkTenantDbContext).Assembly)
             .AddQlxJsonSerialization()
             .AddQlxIdModelBinding()
-            .AddQlxOperationAudit();
+            .AddQlxOperationAudit()
+            // 全局响应包装：[ApiController] 自动 400（JSON 反序列化 / 模型校验失败）统一封装为 ApiResponse；
+            // 链在 AddControllers 之后以保证覆盖 MVC 默认工厂；其余场景由管线侧 UseQlxApiResponseWrapping 兜底
+            .AddQlxApiResponseWrapping();
 
         // OpenAPI 文档（仅 Development 注册；Bearer Scheme / Hashids schema 修正 / Produces 补全见 QlxOpenApiExtensions）
         _ = builder.Services.AddQlxOpenApi(builder.Environment);
@@ -90,6 +105,11 @@ public static class Program
         _ = builder.Services.AddHealthChecks();
 
         WebApplication app = builder.Build();
+
+        // ======= 端点授权规则目录启动期定稿 =======
+        // 触发模块基线合并 + authorization.json 防删默认文件生成（Catalog 为惰性 Singleton，
+        // 不主动解析则要等到首个请求才构建，防删文件生成随之延迟）。
+        _ = app.Services.GetRequiredService<EndpointPolicyCatalog>();
 
         // ======= workerId 租约预初始化（必须先于启动期迁移）=======
         // 启动期迁移创建 PortalDbContext 时会经 IInterceptor 解析 AuditSaveChangesInterceptor →
@@ -197,8 +217,23 @@ public static class Program
         }
 
         // ======= 请求管线 =======
-        // 顺序：异常处理 → CORS（须在 UseRouting 前，以便提前处理 OpenIddict /connect/* 的预检）→ 认证 → 租户上下文（手动 AuthenticateAsync 不依赖 UseAuthentication）→ 路由 → 授权 → Token 黑名单 → 模块许可过滤
-        _ = app.UseExceptionHandlerMiddleware();
+        // 顺序：转发头 → 异常处理 → 安全响应头 → CORS（须在 UseRouting 前，以便提前处理 OpenIddict /connect/* 的预检）→ 认证 → 租户上下文（手动 AuthenticateAsync 不依赖 UseAuthentication）→ 路由 → 授权 → Token 黑名单 → 模块许可过滤
+        // 反向代理场景：依据 X-Forwarded-For / X-Forwarded-Proto 改写 RemoteIpAddress 与 Scheme，
+        // 使 IUserIpAddressProvider 取到真实客户端 IP。默认仅信任回环代理（KnownProxies / KnownNetworks），
+        // 代理不在本机时须显式追加受信网段 / 代理地址，禁止为省事清空受信列表（否则客户端可伪造来源 IP）。
+        _ = app.UseForwardedHeaders(new ForwardedHeadersOptions
+        {
+            ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto,
+        });
+        _ = app.UseQlxExceptionHandling();
+        // 安全响应头基线（渗透整改 V-08）：防 MIME 嗅探 / 点击劫持 / Referrer 泄露
+        _ = app.Use(async (context, next) =>
+        {
+            context.Response.Headers.XContentTypeOptions = "nosniff";
+            context.Response.Headers.XFrameOptions = "DENY";
+            context.Response.Headers["Referrer-Policy"] = "no-referrer";
+            await next(context).ConfigureAwait(false);
+        });
         _ = app.UseQlxCors();
         _ = app.UseAuthentication();
         _ = app.UseTenantContext();
@@ -206,6 +241,9 @@ public static class Program
         _ = app.UseAuthorization();
         _ = app.UseTokenBlacklist();
         _ = app.UseModuleLicenseFilter();
+        // 全局响应包装中间件：须在 UseRouting 之后（依赖端点元数据识别 SkipApiResponseWrap 豁免）；
+        // 500 仍由外层 QlxApiExceptionHandler 接管，本中间件不介入
+        _ = app.UseQlxApiResponseWrapping();
         // Hangfire Dashboard（仅 Development 环境注册；需已认证用户）
         _ = app.UseQlxJobsDashboard();
         // OpenAPI JSON 与 Scalar UI（仅 Development 映射，生产 404）

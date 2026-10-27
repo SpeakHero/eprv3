@@ -9,11 +9,7 @@
  *       全部 async/await 模式，确保 CancellationToken 传播正确（禁用 ContinueWith 包装）。
  */
 
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-
-using OpenIddict.Validation.AspNetCore;
-
 using Qlx.Abstractions.Constants;
 using Qlx.BuildingBlocks.Api;
 using Qlx.BuildingBlocks.Audit;
@@ -23,9 +19,9 @@ using Qlx.Modules.Bas.Services;
 namespace Qlx.Modules.Bas.Controllers;
 
 /// <summary>
-/// 租户自管理域控制器。所有端点需租户级 Token（OpenIddict Validation Scheme）。
+/// 租户自管理域控制器。所有端点需租户级 Token（OpenIddict Validation Scheme + 租户上下文前置策略），
+/// 动作级按权限点策略拦截（TenantAdmin 由 Handler 零计算旁路）。
 /// </summary>
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
 [ApiController]
 [Route("api/tenant")]
 public sealed class TenantAdminController(

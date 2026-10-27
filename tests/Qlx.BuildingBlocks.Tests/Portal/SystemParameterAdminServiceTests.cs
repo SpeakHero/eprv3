@@ -81,6 +81,7 @@ public sealed class StubCurrentUserContext(string? userName) : ICurrentUserConte
     public string? UserId { get; } = userName;
     public string? UserName { get; } = userName;
     public string? UserDisplayName { get; } = userName;
+    public string? CurrentUserIp => null;
     public bool IsAuthenticated { get; } = userName is not null;
 }
 

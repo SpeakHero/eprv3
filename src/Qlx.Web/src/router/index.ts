@@ -4,6 +4,7 @@
  */
 
 import { createRouter, createWebHistory } from 'vue-router'
+import { resolveRouteGuard } from '@/router/guard'
 import { useAuthStore } from '@/stores/auth'
 
 declare module 'vue-router' {
@@ -18,6 +19,8 @@ declare module 'vue-router' {
     requiresTenantData?: boolean
     /** 仅门户管理员可访问（门户管理端）。 */
     requiresPortalAdmin?: boolean
+    /** 页面级菜单权限点（后端菜单下发同源，供前端按钮级裁剪与路由自查）。 */
+    requiredPermissionCode?: string
     title?: string
   }
 }
@@ -126,6 +129,219 @@ const router = createRouter({
           component: () => import('@/views/tenant/TenantModuleView.vue'),
           meta: { requiresTenantData: true, title: '已授权模块' },
         },
+        // ---- 基础信息中心（模块 01）：权限点与后端 BasModule 菜单定义同源 ----
+        {
+          path: 'master/categories',
+          name: 'manage-master-categories',
+          component: () => import('@/views/master/ItemCategoryView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'bas.category.menu',
+            title: '商品分类',
+          },
+        },
+        {
+          path: 'master/units',
+          name: 'manage-master-units',
+          component: () => import('@/views/master/UnitMasterView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'bas.unit.menu',
+            title: '计量单位',
+          },
+        },
+        {
+          path: 'master/suppliers',
+          name: 'manage-master-suppliers',
+          component: () => import('@/views/master/SupplierMasterView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'bas.supplier.menu',
+            title: '供应商管理',
+          },
+        },
+        {
+          path: 'master/customers',
+          name: 'manage-master-customers',
+          component: () => import('@/views/master/CustomerMasterView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'bas.customer.menu',
+            title: '客户管理',
+          },
+        },
+        {
+          path: 'master/persons',
+          name: 'manage-master-persons',
+          component: () => import('@/views/master/PersonMasterView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'bas.person.menu',
+            title: '人员主数据',
+          },
+        },
+        {
+          path: 'master/dictionaries',
+          name: 'manage-master-dictionaries',
+          component: () => import('@/views/master/DictionaryMasterView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'bas.dict.menu',
+            title: '数据字典',
+          },
+        },
+        {
+          path: 'master/code-rules',
+          name: 'manage-master-code-rules',
+          component: () => import('@/views/master/CodeRuleView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'bas.coderule.menu',
+            title: '编码规则',
+          },
+        },
+        {
+          path: 'changelogs',
+          name: 'manage-changelogs',
+          component: () => import('@/views/master/ChangeLogView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'bas.changelog.menu',
+            title: '变更日志',
+          },
+        },
+        // ---- 物流管理（Wms）：仓库档案 ----
+        {
+          path: 'wms/warehouses',
+          name: 'manage-wms-warehouses',
+          component: () => import('@/views/wms/WarehouseView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'wms.warehouse.menu',
+            title: '仓库档案',
+          },
+        },
+        {
+          path: 'wms/inbound',
+          name: 'manage-wms-inbound',
+          component: () => import('@/views/wms/StockInView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'wms.inbound.menu',
+            title: '入库作业',
+          },
+        },
+        {
+          path: 'wms/outbound',
+          name: 'manage-wms-outbound',
+          component: () => import('@/views/wms/StockOutView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'wms.outbound.menu',
+            title: '出库作业',
+          },
+        },
+        {
+          path: 'wms/transfers',
+          name: 'manage-wms-transfers',
+          component: () => import('@/views/wms/TransferView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'wms.transfer.menu',
+            title: '物资调拨',
+          },
+        },
+        {
+          path: 'wms/stocktakes',
+          name: 'manage-wms-stocktakes',
+          component: () => import('@/views/wms/StockTakeView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'wms.stocktake.menu',
+            title: '库存盘点',
+          },
+        },
+        {
+          path: 'wms/adjustments',
+          name: 'manage-wms-adjustments',
+          component: () => import('@/views/wms/InventoryAdjustView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'wms.adjust.menu',
+            title: '盘盈盘亏',
+          },
+        },
+        {
+          path: 'wms/alerts',
+          name: 'manage-wms-alerts',
+          component: () => import('@/views/wms/InventoryAlertView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'wms.alert.menu',
+            title: '库存预警',
+          },
+        },
+        // ---- 商品与库存（Stk）：六页（与后端 Manifest 菜单顺序一致） ----
+        {
+          path: 'stk/items',
+          name: 'manage-stk-items',
+          component: () => import('@/views/stk/ItemMasterView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'stk.item.menu',
+            title: '商品档案',
+          },
+        },
+        {
+          path: 'stk/openings',
+          name: 'manage-stk-openings',
+          component: () => import('@/views/stk/OpeningView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'stk.opening.menu',
+            title: '期初建账',
+          },
+        },
+        {
+          path: 'stk/ledger',
+          name: 'manage-stk-ledger',
+          component: () => import('@/views/stk/StockLedgerView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'stk.ledger.menu',
+            title: '库存台账',
+          },
+        },
+        {
+          path: 'stk/txns',
+          name: 'manage-stk-txns',
+          component: () => import('@/views/stk/StockTxnView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'stk.txn.menu',
+            title: '出入库流水',
+          },
+        },
+        {
+          path: 'stk/cost-adjust',
+          name: 'manage-stk-cost-adjust',
+          component: () => import('@/views/stk/CostAdjustView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'stk.costadjust.menu',
+            title: '成本调整',
+          },
+        },
+        {
+          path: 'stk/batches',
+          name: 'manage-stk-batches',
+          component: () => import('@/views/stk/BatchStockView.vue'),
+          meta: {
+            requiresTenantData: true,
+            requiredPermissionCode: 'stk.batch.menu',
+            title: '批次库存',
+          },
+        },
         {
           path: 'support/approvals',
           name: 'support-approvals',
@@ -228,35 +444,7 @@ router.beforeEach((to) => {
     ? `${to.meta.title} · 淇利馨集团数智经营管理平台`
     : '淇利馨集团数智经营管理平台'
 
-  // 已登录用户访问登录页：按会话深度前移
-  if (to.meta.publicPage) {
-    if (auth.hasTenant) {
-      return '/workbench'
-    }
-    if (auth.isAuthenticated) {
-      return '/select-tenant'
-    }
-    return true
-  }
-
-  if (to.meta.requiresTenant && !auth.hasTenant) {
-    return auth.isAuthenticated ? '/select-tenant' : '/login'
-  }
-
-  // 租户自管理域必须有真实租户上下文（门户管理模式不签发租户 Token）
-  if (to.meta.requiresTenantData && !auth.tenantToken) {
-    return auth.isAuthenticated ? '/select-tenant' : '/login'
-  }
-
-  if (to.meta.requiresPortalAdmin && !auth.isPortalAdminAccount) {
-    return auth.isAuthenticated ? '/select-tenant' : '/login'
-  }
-
-  if (to.meta.requiresIdentity && !auth.isAuthenticated) {
-    return '/login'
-  }
-
-  return true
+  return resolveRouteGuard(to, auth)
 })
 
 export default router

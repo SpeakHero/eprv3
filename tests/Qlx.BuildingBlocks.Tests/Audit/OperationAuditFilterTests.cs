@@ -61,6 +61,7 @@ public sealed class OperationAuditFilterTests : IDisposable
             webBuilder.UseTestServer();
             webBuilder.ConfigureServices(services =>
             {
+                services.AddQlxExceptionHandling();
                 services.AddSingleton<InMemoryAuditService>();
                 services.AddSingleton<Qlx.Abstractions.Audit.IAuditService>(static sp => sp.GetRequiredService<InMemoryAuditService>());
                 services.AddSingleton<ICurrentUserContext>(new TestCurrentUserContext("77"));
@@ -71,7 +72,7 @@ public sealed class OperationAuditFilterTests : IDisposable
             });
             webBuilder.Configure(app =>
             {
-                app.UseExceptionHandlerMiddleware();
+                app.UseQlxExceptionHandling();
                 app.UseRouting();
                 app.UseEndpoints(static endpoints => endpoints.MapControllers());
             });

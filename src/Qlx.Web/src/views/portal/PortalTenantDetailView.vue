@@ -522,8 +522,8 @@ onBeforeUnmount(() => {
         <QlxDataTable :items="memberRows" :columns="memberColumns" :total="memberRows.length" :page-size="10" empty-text="暂无成员" />
       </el-tab-pane>
 
-      <!-- ============ 升级进度 ============ -->
-      <el-tab-pane label="升级为独立库" name="upgrade">
+      <!-- ============ 升级进度（仅共享库租户展示） ============ -->
+      <el-tab-pane v-if="isSharedMode" label="升级为独立库" name="upgrade">
         <div v-if="!upgradeJob" class="upgrade-empty">
           <el-empty description="暂无升级任务" />
           <p class="upgrade-empty__hint">

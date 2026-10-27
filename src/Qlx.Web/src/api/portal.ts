@@ -5,6 +5,7 @@
  */
 
 import axios, { AxiosError } from 'axios'
+import { ApiError, unwrapApiResponse, type ApiResponse } from '@/api/adapters/request'
 import type { CurrentUser, MemberRoleOption, TenantSummary, TokenResponse } from '@/types/auth'
 
 /** 前端单壳公共客户端标识（与后端 OpenIddictConfigurator.SpaClientId 一致）。 */
@@ -22,8 +23,11 @@ const http = axios.create({
   headers: { Accept: 'application/json' },
 })
 
-/** 从后端错误响应中提取可读消息（OpenIddict 用 error / error_description）。 */
+/** 从后端错误响应中提取可读消息（OpenIddict 用 error / error_description；/api 端点用 ApiResponse message）。 */
 function toMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    return error.message
+  }
   if (axios.isAxiosError(error)) {
     const data = (error as AxiosError<Record<string, unknown>>).response?.data
     const description = data?.error_description ?? data?.message ?? data?.code
@@ -118,16 +122,11 @@ export async function fetchMemberRoles(
   tenantId: string,
 ): Promise<MemberRoleOption[]> {
   try {
-    const { data } = await http.get<
-      { data?: MemberRoleOption[] } | MemberRoleOption[]
-    >(`/api/portal/tenants/${encodeURIComponent(tenantId)}/member-roles`, {
-      headers: { Authorization: `Bearer ${identityToken}` },
-    })
-
-    if (Array.isArray(data)) {
-      return data
-    }
-    return Array.isArray(data?.data) ? data.data : []
+    const { data } = await http.get<ApiResponse<MemberRoleOption[]>>(
+      `/api/portal/tenants/${encodeURIComponent(tenantId)}/member-roles`,
+      { headers: { Authorization: `Bearer ${identityToken}` } },
+    )
+    return unwrapApiResponse(data)
   } catch (error) {
     throw new Error(toMessage(error, '获取企业角色失败，请稍后重试'))
   }
@@ -136,10 +135,10 @@ export async function fetchMemberRoles(
 /** 读取当前 Token 对应的用户信息（租户级 Token 含模块许可）。 */
 export async function fetchCurrentUser(accessToken: string): Promise<CurrentUser> {
   try {
-    const { data } = await http.get<CurrentUser>('/api/portal/me', {
+    const { data } = await http.get<ApiResponse<CurrentUser>>('/api/portal/me', {
       headers: { Authorization: `Bearer ${accessToken}` },
     })
-    return data
+    return unwrapApiResponse(data)
   } catch (error) {
     throw new Error(toMessage(error, '获取用户信息失败'))
   }

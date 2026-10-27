@@ -328,15 +328,15 @@ public sealed class PortalModuleAdminRepository(PortalDbContext db) : IPortalMod
 
         var featureMap = features
             .GroupBy(f => f.ModuleCode, StringComparer.Ordinal)
-            .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)g.Select(x => x.DisplayName).ToList(), StringComparer.Ordinal);
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<string>)[.. g.Select(x => x.DisplayName)], StringComparer.Ordinal);
 
-        return modules.Select(m => new ModuleCatalogRow(
+        return [.. modules.Select(m => new ModuleCatalogRow(
             m.ModuleCode,
             m.DisplayName,
             m.CurrentVersion,
             m.Description,
             countMap.GetValueOrDefault(m.ModuleCode),
-            featureMap.GetValueOrDefault(m.ModuleCode) ?? [])).ToList();
+            featureMap.GetValueOrDefault(m.ModuleCode) ?? []))];
     }
 
     /// <inheritdoc />

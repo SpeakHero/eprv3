@@ -46,7 +46,10 @@ public sealed class NotFoundException(string resourceType, string resourceId) : 
 /// <remarks>
 /// 构造函数。
 /// </remarks>
-public sealed class ConflictException(string message, string errorCode = "CONFLICT") : BusinessException(errorCode, message)
+/// <param name="message">面向业务用户的可读消息。</param>
+/// <param name="errorCode">业务错误码。</param>
+/// <param name="details">可选详细信息（如停用前置校验命中的岗位名列表）。</param>
+public sealed class ConflictException(string message, string errorCode = "CONFLICT", object? details = null) : BusinessException(errorCode, message, details)
 {
 }
 
@@ -64,7 +67,7 @@ public sealed record FieldError(string FieldName, string ErrorMessage);
 public sealed class ValidationException(IEnumerable<FieldError> fieldErrors) : BusinessException("VALIDATION_ERROR", "请求数据校验失败", fieldErrors.ToList())
 {
     /// <summary>字段级错误列表。</summary>
-    public IReadOnlyList<FieldError> FieldErrors { get; } = fieldErrors.ToList();
+    public IReadOnlyList<FieldError> FieldErrors { get; } = [.. fieldErrors];
 
     /// <summary>
     /// 单字段便捷构造。

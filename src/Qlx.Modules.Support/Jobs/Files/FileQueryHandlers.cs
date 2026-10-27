@@ -77,7 +77,7 @@ public sealed partial class FileMetadataHandler(
             .Select(e => e.ObjectId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        return protectedIds.ToHashSet();
+        return [.. protectedIds];
     }
 
     /// <summary>实体 → 元数据载荷（供列表处理器复用）。</summary>

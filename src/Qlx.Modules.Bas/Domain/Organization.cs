@@ -1,9 +1,10 @@
 /*
  * 所属公司：四川淇利馨集团有限公司
  * 作者：SpeakHero（491960352@qq.com）
- * 版本：1.0.0 beta
+ * 版本：2.0.0 beta
  * 创建时间：2026-10-21
- * 描述：组织架构节点类型（公司/部门/团队）
+ * 修改时间：2026-10-25 12:00:00 +08:00 中国标准时间 星期日
+ * 描述：组织架构节点类型（集团/子公司/部门/项目部，D2 重定义）与组织机构实体
  */
 
 using System.ComponentModel.DataAnnotations;
@@ -11,17 +12,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Qlx.Modules.Bas.Domain;
 
-/// <summary>组织架构节点类型。</summary>
+/// <summary>组织架构节点类型（D2：集团 / 子公司 / 部门 / 项目部）。</summary>
 public enum OrgNodeType
 {
-    /// <summary>公司（顶层节点）。</summary>
-    Company = 1,
+    /// <summary>集团（顶层节点）。</summary>
+    Group = 1,
 
-    /// <summary>部门（中层组织）。</summary>
-    Department = 2,
+    /// <summary>子公司。</summary>
+    Subsidiary = 2,
 
-    /// <summary>团队（最小执行单元）。</summary>
-    Team = 3,
+    /// <summary>部门。</summary>
+    Department = 3,
+
+    /// <summary>项目部。</summary>
+    Project = 4,
 }
 
 /// <summary>
@@ -37,6 +41,7 @@ public enum EntityStatus
 /// 组织机构实体（表前缀 bas_）。租户内组织架构树节点，自引用形成层级。
 /// 根节点 ParentId 为 null 且 IsBuiltin=true。
 /// </summary>
+[Index(nameof(TenantId), nameof(Code), IsUnique = true)]
 [Index(nameof(ParentId))]
 [Index(nameof(Status))]
 public sealed class Organization : Qlx.Abstractions.Domain.AuditableEntity, Qlx.Abstractions.Domain.ITenantEntity
@@ -47,6 +52,10 @@ public sealed class Organization : Qlx.Abstractions.Domain.AuditableEntity, Qlx.
     /// <summary>父节点 Id（null 表示根）。</summary>
     public long? ParentId { get; internal set; }
 
+    /// <summary>组织编码（租户内唯一，经统一发号器生成，不可修改）。</summary>
+    [MaxLength(20)]
+    public string Code { get; internal set; } = string.Empty;
+
     /// <summary>组织名称。</summary>
     [MaxLength(100)]
     public string Name { get; internal set; } = string.Empty;
@@ -54,8 +63,17 @@ public sealed class Organization : Qlx.Abstractions.Domain.AuditableEntity, Qlx.
     /// <summary>节点类型。</summary>
     public OrgNodeType Type { get; internal set; }
 
-    /// <summary>负责人关联 por_tenant_members.id（可为空）。</summary>
-    public long? ManagerMemberId { get; internal set; }
+    /// <summary>负责人（自然人 Id，可为空；旧负责人关联在迁移中置空）。</summary>
+    public long? LeaderPersonId { get; internal set; }
+
+    /// <summary>生效日期。</summary>
+    public DateOnly EffectDate { get; internal set; }
+
+    /// <summary>失效日期（null 表示长期有效）。</summary>
+    public DateOnly? ExpiryDate { get; internal set; }
+
+    /// <summary>数据版本号（每次写操作 +1，版本快照与历史回看使用）。</summary>
+    public int Version { get; private set; } = 1;
 
     /// <summary>启停状态。</summary>
     public EntityStatus Status { get; private set; } = EntityStatus.Enabled;
@@ -71,7 +89,7 @@ public sealed class Organization : Qlx.Abstractions.Domain.AuditableEntity, Qlx.
 
     public Organization() { }
 
-    public Organization(long tenantId, string name, OrgNodeType type, long? parentId, int sortOrder = 0)
+    public Organization(long tenantId, string name, OrgNodeType type, long? parentId, int sortOrder = 0, string? code = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(tenantId);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -80,9 +98,48 @@ public sealed class Organization : Qlx.Abstractions.Domain.AuditableEntity, Qlx.
         Type = type;
         ParentId = parentId;
         SortOrder = sortOrder;
+        Code = code ?? string.Empty;
+        EffectDate = DateOnly.FromDateTime(DateTime.UtcNow);
     }
 
+    /// <summary>重命名。</summary>
+    /// <param name="name">新名称。</param>
+    public void Rename(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        Name = name;
+    }
+
+    /// <summary>变更父级。</summary>
+    /// <param name="parentId">新父级 Id（null 表示根）。</param>
+    public void ChangeParent(long? parentId) => ParentId = parentId;
+
+    /// <summary>变更节点类型（组织调级）。</summary>
+    /// <param name="type">新节点类型。</param>
+    public void ChangeType(OrgNodeType type) => Type = type;
+
+    /// <summary>设置负责人。</summary>
+    /// <param name="personId">负责人自然人 Id（null 表示清空）。</param>
+    public void SetLeader(long? personId) => LeaderPersonId = personId;
+
+    /// <summary>变更有效期。</summary>
+    /// <param name="effectDate">生效日期。</param>
+    /// <param name="expiryDate">失效日期（null 表示长期有效）。</param>
+    public void ChangePeriod(DateOnly effectDate, DateOnly? expiryDate)
+    {
+        EffectDate = effectDate;
+        ExpiryDate = expiryDate;
+    }
+
+    /// <summary>版本号 +1（每次写操作由服务层调用一次）。</summary>
+    public void TouchVersion() => Version++;
+
+    /// <summary>停用。</summary>
     public void Disable() => Status = EntityStatus.Disabled;
+
+    /// <summary>启用。</summary>
     public void Enable() => Status = EntityStatus.Enabled;
+
+    /// <summary>软删。</summary>
     public void SoftDelete() => IsDeleted = true;
 }

@@ -24,7 +24,7 @@ public sealed class PortalModuleAdminService(
     {
         var catalog = await modules.ListCatalogAsync(cancellationToken).ConfigureAwait(false);
 
-        return catalog.Select(m => new PortalModuleItem
+        return [.. catalog.Select(m => new PortalModuleItem
         {
             Code = m.ModuleCode,
             Name = m.DisplayName,
@@ -32,7 +32,7 @@ public sealed class PortalModuleAdminService(
             Description = m.Description ?? string.Empty,
             Features = m.Features,
             LicensedTenantCount = m.LicensedTenantCount,
-        }).ToList();
+        })];
     }
 
     /// <inheritdoc />
@@ -40,7 +40,7 @@ public sealed class PortalModuleAdminService(
         CancellationToken cancellationToken)
     {
         var records = await tenants.QueryLicenseRecordsAsync(null, 100, cancellationToken).ConfigureAwait(false);
-        return records.Select(r => PortalAdminMapper.ToLicenseRecordItem(r, obfuscator)).ToList();
+        return [.. records.Select(r => PortalAdminMapper.ToLicenseRecordItem(r, obfuscator))];
     }
 }
 

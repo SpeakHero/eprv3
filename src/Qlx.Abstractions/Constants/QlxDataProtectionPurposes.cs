@@ -3,7 +3,7 @@
  * 作者：SpeakHero（491960352@qq.com）
  * 版本：1.0.0 beta
  * 创建时间：2026-10-20 16:00:00 +08:00 中国标准时间 星期一
- * 修改时间：2026-10-20 16:00:00 +08:00 中国标准时间 星期一
+ * 修改时间：2026-10-25 10:00:00 +08:00 中国标准时间 星期日
  * 描述：Data Protection Purpose 常量集中管理，全局唯一入口，禁止各模块硬编码 purpose 字符串
  */
 
@@ -28,6 +28,9 @@ public static class QlxDataProtectionPurposes
 
     /// <summary>外部身份提供方（SSO/OAuth2 Client）客户端密钥加解密 purpose。</summary>
     public const string ExternalIdentityProviderCredentials = "Qlx.Erpv3.ExternalIdentityProviderCredentials";
+
+    /// <summary>Bas 人员敏感字段（证件号 / 银行卡号 / 手机号）加解密 purpose。</summary>
+    public const string BasPersonSensitive = "Qlx.Erpv3.Bas.PersonSensitive";
 
     // 后续业务域按需追加：
     // public const string UserSensitiveProfile = "Qlx.Erpv3.User.SensitiveProfile";

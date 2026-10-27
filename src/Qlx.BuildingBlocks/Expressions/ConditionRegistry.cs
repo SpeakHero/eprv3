@@ -81,8 +81,8 @@ internal sealed class ConditionRegistry
         _functions = functionMap.ToFrozenDictionary(StringComparer.OrdinalIgnoreCase);
         BinaryOperatorList = binaryList;
         UnaryOperatorList = unaryList;
-        LiteralParsers = literalParsers.ToArray();
-        ValueCoercers = valueCoercers.ToArray();
+        LiteralParsers = [.. literalParsers];
+        ValueCoercers = [.. valueCoercers];
         SymbolicOperatorTexts = [.. binaryMap.Keys.Union(unaryMap.Keys).Where(k => !IsWord(k))];
     }
 

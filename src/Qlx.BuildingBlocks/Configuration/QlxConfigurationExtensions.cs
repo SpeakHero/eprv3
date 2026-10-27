@@ -1,9 +1,9 @@
 /*
  * 所属公司：四川淇利馨集团有限公司
  * 作者：SpeakHero（491960352@qq.com）
- * 版本：1.0.0 beta
+ * 版本：1.1.0 beta
  * 创建时间：2026-10-20 22:30:00 +08:00 中国标准时间 星期二
- * 修改时间：2026-10-20 22:30:00 +08:00 中国标准时间 星期二
+ * 修改时间：2026-10-25 10:00:00 +08:00 中国标准时间 星期日
  * 描述：四级配置目录分层加载扩展（common/portal|tenant/modules/environments）
  */
 
@@ -14,9 +14,10 @@ namespace Qlx.BuildingBlocks.Configuration;
 /// <summary>
 /// 四级配置目录装配扩展。配置根解析优先级：环境变量 <c>QLX_CONFIG_ROOT</c>
 /// → 内容根目录下 <c>config</c> → 内容根目录上两级下 <c>config</c>（仓库根约定）。
-/// 分层加载顺序（后者覆盖前者）：
-/// <c>config/common/*.json</c> → <c>config/portal|tenant/*.json</c>（按宿主角色）
-/// → <c>config/modules/**/*.json</c> → <c>config/environments/{环境名}/**/*.json</c>。
+/// 配置优先级（低→高）：默认源 → <c>config/common/*.json</c>
+/// → <c>config/portal|tenant/*.json</c>（按宿主角色）
+/// → <c>config/modules/**/*.json</c> → <c>config/environments/{环境名}/**/*.json</c>
+/// → 环境变量（双下划线映射 <c>__</c> → <c>:</c>，如 <c>Qlx__Ai__Providers__zhipu__ApiKey</c>）。
 /// 全部文件可选且热重载；业务代码禁止裸读字符串键，须经强类型 Options 消费。
 /// </summary>
 public static class QlxConfigurationExtensions
@@ -69,7 +70,23 @@ public static class QlxConfigurationExtensions
         AddJsonFiles(builder, Path.Combine(configRoot, ModulesDirectory), searchSubdirectories: true);
         AddJsonFiles(builder, Path.Combine(configRoot, EnvironmentsDirectory, environmentName), searchSubdirectories: true);
 
+        // 环境变量最后加载，优先级最高：Qlx__Ai__Strategy、Qlx__Ai__Providers__zhipu__ApiKey
+        // （WebApplicationBuilder 默认环境变量源在 JSON 之前，会被此处的 JSON 源反向覆盖）
+        builder.AddEnvironmentVariables();
+
         return builder;
+    }
+
+    /// <summary>
+    /// 解析配置根目录（与 <see cref="AddQlxConfiguration"/> 同一套定位逻辑）。
+    /// 供需要向配置目录落盘的组件复用（如授权规则 JSON 防删自动生成），禁止业务代码自行拼路径。
+    /// </summary>
+    /// <param name="contentRootPath">宿主内容根目录。</param>
+    /// <returns>配置根目录全路径；三处候选均不存在时返回 <c>null</c>。</returns>
+    public static string? ResolveQlxConfigRoot(string contentRootPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(contentRootPath);
+        return ResolveConfigRoot(contentRootPath);
     }
 
     private static string? ResolveConfigRoot(string contentRootPath)

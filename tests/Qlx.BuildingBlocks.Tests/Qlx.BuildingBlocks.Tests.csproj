@@ -19,6 +19,7 @@
     </PackageReference>
     <PackageReference Include="Microsoft.AspNetCore.TestHost" Version="10.0.13" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="10.0.13" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.13" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageReference Include="xunit.runner.visualstudio" Version="4.0.1">
       <PrivateAssets>all</PrivateAssets>
@@ -38,6 +39,8 @@
     <ProjectReference Include="..\..\src\Qlx.Modules.Bas\Qlx.Modules.Bas.csproj" />
     <ProjectReference Include="..\..\src\Qlx.Modules.Portal\Qlx.Modules.Portal.csproj" />
     <ProjectReference Include="..\..\src\Qlx.Modules.Support\Qlx.Modules.Support.csproj" />
+    <ProjectReference Include="..\..\src\Qlx.Modules.Wms\Qlx.Modules.Wms.csproj" />
+    <ProjectReference Include="..\..\src\Qlx.Modules.Stk\Qlx.Modules.Stk.csproj" />
   </ItemGroup>
 
 </Project>

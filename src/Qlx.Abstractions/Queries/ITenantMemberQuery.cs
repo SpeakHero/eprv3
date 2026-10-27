@@ -69,10 +69,13 @@ public interface ITenantMemberQuery : IModuleQuery
     /// <param name="status">按本地状态筛选（null=不限）。</param>
     /// <param name="skip">跳过条数。</param>
     /// <param name="take">返回条数。</param>
+    /// <param name="orgIds">数据范围组织 Id 集（null=不限；X-5 整改：消费方按角色 DefaultDataScope 展开后传入）。</param>
+    /// <param name="onlyMemberId">仅返回该成员（Self 数据范围；null=不限）。</param>
     /// <param name="cancellationToken">取消令牌。</param>
     Task<(IReadOnlyList<TenantMemberSummaryRow> Items, int Total)> QueryMembersAsync(
         long tenantId, string? keyword, long? orgId, int? role, int? status,
-        int skip, int take, CancellationToken cancellationToken);
+        int skip, int take, CancellationToken cancellationToken,
+        IReadOnlyCollection<long>? orgIds = null, long? onlyMemberId = null);
 
     /// <summary>
     /// 查询单个租户成员详情（含 PortalUser 基础信息）。

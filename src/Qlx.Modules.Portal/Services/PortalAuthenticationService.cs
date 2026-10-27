@@ -8,6 +8,8 @@
 
 using System.Globalization;
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -132,10 +134,20 @@ public sealed partial class PortalAuthenticationService(
     PortalDbContext db,
     IServiceProvider services,
     ITenantContext tenantContext,
+    IPendingInviteActivator pendingInviteActivator,
     ILogger<PortalAuthenticationService> logger) : IPortalAuthenticationService
 {
     /// <summary>LoggerMessage 源生成器要求字段（主构造参数经字段初始化器接入）。</summary>
     private readonly ILogger<PortalAuthenticationService> _logger = logger;
+
+    /// <summary>凭证字段长度上限（安全基线：超长直接拒绝，防止超大表单触发框架异常与资源滥用）。</summary>
+    private const int MaxCredentialLength = 128;
+
+    /// <summary>统一失败文案：不区分账号不存在 / 密码错误 / 账号锁定 / IP 封禁，杜绝用户枚举与锁定感知。</summary>
+    private const string CredentialFailureMessage = "账号或密码错误，或账号已被锁定";
+
+    /// <summary>同一来源 IP 在失败窗口内允许的最大失败次数，达到即整体封禁该 IP（防跨账号分布式爆破）。</summary>
+    private const int MaxIpFailuresPerWindow = 20;
 
     /// <summary>
     /// 请求租户上下文：Bas 查询契约按当前 TenantId 解析目标租户库，
@@ -167,6 +179,12 @@ public sealed partial class PortalAuthenticationService(
             return PortalAuthResult.Failure(OpenIddictConstants.Errors.InvalidRequest, "login_account 与 password 必填");
         }
 
+        // 入口长度上限（安全基线 V-1）：超长输入直接拒绝，避免进入缓存键构造与密码哈希计算
+        if (loginAccount.Length > MaxCredentialLength || password.Length > MaxCredentialLength)
+        {
+            return PortalAuthResult.Failure(OpenIddictConstants.Errors.InvalidRequest, "login_account 或 password 长度超出限制");
+        }
+
         var auth = authOptions.Value;
 
         // 登录安全阈值：数据库参数表优先（系统管理在线维护），config 值仅作参数表未初始化时的兜底
@@ -177,12 +195,21 @@ public sealed partial class PortalAuthenticationService(
             .GetIntAsync(SystemParameterKeys.AuthPasswordFailWindowMinutes, auth.PasswordFailWindowMinutes, cancellationToken)
             .ConfigureAwait(false);
 
+        // IP 维度限流：同一来源 IP 在窗口内失败次数过多即整体封禁（防跨账号分布式爆破）
+        var ipBlockKey = AuthSecurityCacheKeys.IpBlock(clientIpAddress);
+        if (await cache.GetAsync<string>(ipBlockKey, cancellationToken).ConfigureAwait(false) is not null)
+        {
+            await loginAudit.RecordFailureAsync(loginAccount, clientIpAddress, cancellationToken).ConfigureAwait(false);
+            return PortalAuthResult.Failure(OpenIddictConstants.Errors.InvalidGrant, CredentialFailureMessage);
+        }
+
         // 账号锁定检查（参数化阈值，窗口内累计错误达标锁定，窗口结束自动解锁）
-        var lockoutKey = QlxAuthConstants.AuthCacheKeys.LockoutPrefix + loginAccount;
+        // 锁定提示与密码错误提示统一，避免攻击者通过响应差异枚举有效账号
+        var lockoutKey = AuthSecurityCacheKeys.Lockout(loginAccount);
         if (await cache.GetAsync<string>(lockoutKey, cancellationToken).ConfigureAwait(false) is not null)
         {
             await loginAudit.RecordFailureAsync(loginAccount, clientIpAddress, cancellationToken).ConfigureAwait(false);
-            return PortalAuthResult.Failure(OpenIddictConstants.Errors.InvalidGrant, "账号已锁定，请稍后再试");
+            return PortalAuthResult.Failure(OpenIddictConstants.Errors.InvalidGrant, CredentialFailureMessage);
         }
 
         // 查找用户并校验密码（不区分"用户不存在/密码错误"，防用户枚举）
@@ -212,8 +239,11 @@ public sealed partial class PortalAuthenticationService(
             return PortalAuthResult.Failure(OpenIddictConstants.Errors.InvalidGrant, "账号已被停用，请联系管理员");
         }
 
-        await cache.RemoveAsync(QlxAuthConstants.AuthCacheKeys.PasswordFailPrefix + loginAccount, cancellationToken)
+        await cache.RemoveAsync(AuthSecurityCacheKeys.PasswordFail(loginAccount), cancellationToken)
             .ConfigureAwait(false);
+
+        // X-6 整改：首登激活——PendingInvite 成员密码校验通过即视为接受邀请（事务内置普通成员 + MEMBER_ACTIVATE 审计）
+        await pendingInviteActivator.ActivateAsync(user, cancellationToken).ConfigureAwait(false);
 
         // 记录登录时间；哈希算法升级时重签（RehashNeeded）
         var newHash = verify == PasswordVerificationResult.SuccessRehashNeeded
@@ -237,6 +267,16 @@ public sealed partial class PortalAuthenticationService(
         var responseParameters = new Dictionary<string, string?>();
 
         var tenantsJson = await GetTenantsJsonAsync(user.Id, cancellationToken).ConfigureAwait(false);
+
+        // 无任何可进入企业时按成员状态给出明确拒绝：避免前端以「尚未关联任何企业」掩盖待激活场景
+        if (tenantsJson is null && !user.IsPortalAdmin)
+        {
+            await loginAudit.RecordFailureAsync(loginAccount, clientIpAddress, cancellationToken).ConfigureAwait(false);
+            return PortalAuthResult.Failure(
+                OpenIddictConstants.Errors.InvalidGrant,
+                await BuildNoTenantAccessMessageAsync(user.Id, cancellationToken).ConfigureAwait(false));
+        }
+
         if (tenantsJson is not null)
         {
             // qlx_tenants 作为字符串参数出现在 Token 响应中（前端 JSON.parse 还原数组）
@@ -601,6 +641,35 @@ public sealed partial class PortalAuthenticationService(
         return System.Text.Json.JsonSerializer.Serialize(items, Qlx.Abstractions.Serialization.QlxJsonDefaults.Default);
     }
 
+    /// <summary>
+    /// 无任何可进入租户时的拒绝提示：区分「待激活邀请」「成员被停用」「未关联企业」三种场景。
+    /// </summary>
+    private async Task<string> BuildNoTenantAccessMessageAsync(long userId, CancellationToken cancellationToken)
+    {
+        var memberships = await db.TenantMembers
+            .AsNoTracking()
+            .Where(m => m.PortalUserId == userId)
+            .Select(m => new { m.Role, m.Status })
+            .ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        if (memberships.Count == 0)
+        {
+            return "该账号尚未关联任何企业，请联系集团管理员";
+        }
+
+        if (memberships.Any(m => m.Role == TenantMemberRole.PendingInvite && m.Status == MemberStatus.Enabled))
+        {
+            return "账号待激活：已收到企业邀请，请联系企业管理员完成邀请激活后再登录";
+        }
+
+        if (memberships.Any(m => m.Status == MemberStatus.Disabled))
+        {
+            return "账号所在企业成员身份已被停用，请联系企业管理员";
+        }
+
+        return "该账号关联的企业当前不可用（已停用或已过期），请联系集团管理员";
+    }
+
     /// <summary>查询租户已启用的模块编码（租户级 Token 的 modules claim 来源）。</summary>
     private async Task<List<string>> GetLicensedModulesAsync(long tenantId, CancellationToken cancellationToken)
         => await db.TenantModules
@@ -610,7 +679,11 @@ public sealed partial class PortalAuthenticationService(
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-    /// <summary>累计密码失败次数并返回拒绝结果（达到阈值锁定账号；阈值与窗口来自数据库参数表）。</summary>
+    /// <summary>
+    /// 累计密码失败次数并返回拒绝结果（达到阈值锁定账号；阈值与窗口来自数据库参数表）。
+    /// 同时进行 IP 维度失败计数，同一 IP 窗口内失败超阈值即整体封禁（防跨账号分布式爆破）。
+    /// 所有失败响应使用统一文案，避免通过消息差异枚举账号或感知锁定状态。
+    /// </summary>
     private async Task<PortalAuthResult> RecordPasswordFailureAndRejectAsync(
         string loginAccount,
         int maxPasswordFailAttempts,
@@ -618,28 +691,49 @@ public sealed partial class PortalAuthenticationService(
         string clientIpAddress,
         CancellationToken cancellationToken)
     {
-        var failKey = QlxAuthConstants.AuthCacheKeys.PasswordFailPrefix + loginAccount;
+        var failKey = AuthSecurityCacheKeys.PasswordFail(loginAccount);
 
         // 登录失败审计（含账号不存在场景，符合「不区分用户是否存在」的防枚举策略）
         await loginAudit.RecordFailureAsync(loginAccount, clientIpAddress, cancellationToken).ConfigureAwait(false);
 
+        var window = TimeSpan.FromMinutes(passwordFailWindowMinutes);
+
+        // IP 维度累计：同一来源跨账号失败也计数，达到阈值封禁该 IP
+        var ipFailKey = AuthSecurityCacheKeys.IpFail(clientIpAddress);
+        var ipFails = await cache.GetAsync<int>(ipFailKey, cancellationToken).ConfigureAwait(false) + 1;
+        await cache.SetAsync(ipFailKey, ipFails, cancellationToken,
+                new CacheEntryOptions { AbsoluteExpirationRelativeToNow = window })
+            .ConfigureAwait(false);
+
+        if (ipFails >= MaxIpFailuresPerWindow)
+        {
+            await cache.SetAsync(
+                    AuthSecurityCacheKeys.IpBlock(clientIpAddress),
+                    PortalConstants.CacheKeys.LockoutMarker, cancellationToken,
+                    new CacheEntryOptions { AbsoluteExpirationRelativeToNow = window })
+                .ConfigureAwait(false);
+            LogIpBlocked(clientIpAddress, ipFails);
+            return PortalAuthResult.Failure(OpenIddictConstants.Errors.InvalidGrant, CredentialFailureMessage);
+        }
+
         var fails = await cache.GetAsync<int>(failKey, cancellationToken).ConfigureAwait(false);
         fails++;
-        var window = TimeSpan.FromMinutes(passwordFailWindowMinutes);
         await cache.SetAsync(failKey, fails, cancellationToken,
                 new CacheEntryOptions { AbsoluteExpirationRelativeToNow = window })
             .ConfigureAwait(false);
 
         if (fails >= maxPasswordFailAttempts)
         {
-            await cache.SetAsync(QlxAuthConstants.AuthCacheKeys.LockoutPrefix + loginAccount,
+            await cache.SetAsync(
+                    AuthSecurityCacheKeys.Lockout(loginAccount),
                     PortalConstants.CacheKeys.LockoutMarker, cancellationToken,
                     new CacheEntryOptions { AbsoluteExpirationRelativeToNow = window })
                 .ConfigureAwait(false);
-            return PortalAuthResult.Failure(OpenIddictConstants.Errors.InvalidGrant, "密码错误次数过多，账号已临时锁定");
+            LogAccountLocked(loginAccount, fails);
+            return PortalAuthResult.Failure(OpenIddictConstants.Errors.InvalidGrant, CredentialFailureMessage);
         }
 
-        return PortalAuthResult.Failure(OpenIddictConstants.Errors.InvalidGrant, "账号或密码错误");
+        return PortalAuthResult.Failure(OpenIddictConstants.Errors.InvalidGrant, CredentialFailureMessage);
     }
 
     /// <summary>
@@ -959,4 +1053,14 @@ public sealed partial class PortalAuthenticationService(
         Level = LogLevel.Warning,
         Message = "未注册 IPortalRolePermissionQuery 实现，跳过门户侧权限码聚合。portalUserId={PortalUserId}")]
     private partial void LogPortalRoleQueryNotRegistered(long portalUserId);
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "账号触发锁定阈值：loginAccount={LoginAccount}, failCount={FailCount}")]
+    private partial void LogAccountLocked(string loginAccount, int failCount);
+
+    [LoggerMessage(
+        Level = LogLevel.Warning,
+        Message = "来源 IP 触发封禁阈值：clientIp={ClientIpAddress}, failCount={FailCount}")]
+    private partial void LogIpBlocked(string clientIpAddress, int failCount);
 }

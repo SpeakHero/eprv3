@@ -114,7 +114,7 @@ public sealed partial class SystemParameterAdminService(
     {
         var page = await repository.QueryAsync(request.Keyword, request, cancellationToken).ConfigureAwait(false);
         return new PagedResult<SystemParameterItem>(
-            page.Items.Select(ToItem).ToList(), page.TotalCount, page.Page, page.PageSize);
+            [.. page.Items.Select(ToItem)], page.TotalCount, page.Page, page.PageSize);
     }
 
     private static SystemParameterItem ToItem(SystemParameterEntity parameter) => new()

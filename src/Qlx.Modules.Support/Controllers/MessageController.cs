@@ -6,14 +6,12 @@
  * 描述：信息中心 API Controller（/api/support/messages）——Controller 层仅参数提取 + Service 调用 + 响应封装
  */
 
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using OpenIddict.Validation.AspNetCore;
 using Qlx.Abstractions.Domain;
-using Qlx.Abstractions.Constants;
 using Qlx.Abstractions.Exceptions;
 using Qlx.Abstractions.Messages;
+using Qlx.Abstractions.Constants;
 using Qlx.BuildingBlocks.Api;
 using Qlx.BuildingBlocks.Audit;
 using Qlx.Modules.Support.Services.Messages;
@@ -28,7 +26,6 @@ namespace Qlx.Modules.Support.Controllers;
 /// <param name="messageService">消息服务（2A 冻结契约能力）。</param>
 /// <param name="supportMessageService">信息中心门面服务（合并视图 / 全局项状态 / 订阅）。</param>
 /// <param name="currentUser">当前用户上下文。</param>
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
 [ApiController]
 [Route("api/support/messages")]
 public sealed class MessageController(

@@ -12,6 +12,8 @@
     <ProjectReference Include="..\Qlx.Modules.Portal\Qlx.Modules.Portal.csproj" />
     <ProjectReference Include="..\Qlx.Modules.Bas\Qlx.Modules.Bas.csproj" />
     <ProjectReference Include="..\Qlx.Modules.Support\Qlx.Modules.Support.csproj" />
+    <ProjectReference Include="..\Qlx.Modules.Wms\Qlx.Modules.Wms.csproj" />
+    <ProjectReference Include="..\Qlx.Modules.Stk\Qlx.Modules.Stk.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -7,8 +7,11 @@
  * 描述：分页请求基类 + 分页结果基类 + IQueryable 异步分页扩展
  */
 
-using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
+
+using System.ComponentModel.DataAnnotations;
+using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Qlx.BuildingBlocks.Api;
 
@@ -18,9 +21,11 @@ namespace Qlx.BuildingBlocks.Api;
 public class PagedRequest
 {
     /// <summary>页码（从 1 开始，默认 1）。</summary>
+    [Range(1, int.MaxValue, ErrorMessage = "页码必须 ≥ 1")]
     public int Page { get; set; } = 1;
 
     /// <summary>每页大小（默认 20，最大 200）。</summary>
+    [Range(1, 200, ErrorMessage = "每页大小必须在 1 ~ 200 之间")]
     public int PageSize { get; set; } = 20;
 
     /// <summary>排序字段（可选，对应实体属性名）。</summary>
@@ -68,8 +73,8 @@ public static class QueryablePagingExtensions
         PagedRequest request,
         CancellationToken cancellationToken)
     {
-        var total = await source.LongCountAsync(cancellationToken).ConfigureAwait(false);
-        var items = await source
+        long total = await source.LongCountAsync(cancellationToken).ConfigureAwait(false);
+        List<T> items = await source
             .Skip(request.Skip)
             .Take(request.SafePageSize)
             .ToListAsync(cancellationToken)
@@ -86,12 +91,12 @@ public static class QueryablePagingExtensions
         string propertyName,
         bool descending)
     {
-        var parameter = Expression.Parameter(typeof(T), "e");
-        var property = Expression.Property(parameter, propertyName);
-        var lambda = Expression.Lambda(property, parameter);
+        ParameterExpression parameter = Expression.Parameter(typeof(T), "e");
+        MemberExpression property = Expression.Property(parameter, propertyName);
+        LambdaExpression lambda = Expression.Lambda(property, parameter);
 
-        var methodName = descending ? nameof(Queryable.OrderByDescending) : nameof(Queryable.OrderBy);
-        var method = typeof(Queryable).GetMethods()
+        string methodName = descending ? nameof(Queryable.OrderByDescending) : nameof(Queryable.OrderBy);
+        MethodInfo method = typeof(Queryable).GetMethods()
             .First(m => m.Name == methodName && m.GetParameters().Length == 2)
             !.MakeGenericMethod(typeof(T), property.Type);
 

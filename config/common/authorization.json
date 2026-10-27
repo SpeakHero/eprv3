@@ -1,0 +1,594 @@
+{
+  "endpointPolicies": {
+    "rules": [
+      {
+        "controller": "Approval",
+        "requireTenantContext": true,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Approval",
+        "action": "AddSign",
+        "permissionCode": "support.approval.todo",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Approval",
+        "action": "Approve",
+        "permissionCode": "support.approval.todo",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Approval",
+        "action": "CreateDelegate",
+        "permissionCode": "support.approval.delegate",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Approval",
+        "action": "Delegates",
+        "permissionCode": "support.approval.delegate",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Approval",
+        "action": "Flows",
+        "permissionCode": "support.approval.flow",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Approval",
+        "action": "Instance",
+        "permissionCode": "support.approval.instance",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Approval",
+        "action": "MyDone",
+        "permissionCode": "support.approval.todo",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Approval",
+        "action": "MyInitiated",
+        "permissionCode": "support.approval.initiate",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Approval",
+        "action": "MyTodos",
+        "permissionCode": "support.approval.todo",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Approval",
+        "action": "Reject",
+        "permissionCode": "support.approval.todo",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Approval",
+        "action": "RevokeDelegate",
+        "permissionCode": "support.approval.delegate",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Approval",
+        "action": "Start",
+        "permissionCode": "support.approval.initiate",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Approval",
+        "action": "Transfer",
+        "permissionCode": "support.approval.todo",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Approval",
+        "action": "Urge",
+        "permissionCode": "support.approval.todo",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Approval",
+        "action": "Withdraw",
+        "permissionCode": "support.approval.initiate",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Authorization",
+        "action": "Exchange",
+        "requireTenantContext": false,
+        "allowAnonymous": true
+      },
+      {
+        "controller": "File",
+        "requireTenantContext": true,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "File",
+        "action": "Delete",
+        "permissionCode": "support.file.delete",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "File",
+        "action": "Download",
+        "permissionCode": "support.file.download",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "File",
+        "action": "GetMetadata",
+        "permissionCode": "support.file.download",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "File",
+        "action": "GrantAcl",
+        "permissionCode": "support.file.acl",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "File",
+        "action": "List",
+        "permissionCode": "support.file.menu",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "File",
+        "action": "ListAcl",
+        "permissionCode": "support.file.acl",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "File",
+        "action": "Preview",
+        "permissionCode": "support.file.download",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "File",
+        "action": "Purge",
+        "permissionCode": "support.file.delete",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "File",
+        "action": "RecycleList",
+        "permissionCode": "support.file.menu",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "File",
+        "action": "Restore",
+        "permissionCode": "support.file.restore",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "File",
+        "action": "RevokeAcl",
+        "permissionCode": "support.file.acl",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "File",
+        "action": "Upload",
+        "permissionCode": "support.file.upload",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Job",
+        "requireTenantContext": true,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Job",
+        "action": "Cancel",
+        "permissionCode": "support.job.cancel",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Job",
+        "action": "Definitions",
+        "permissionCode": "support.job.view",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Job",
+        "action": "GetStatus",
+        "permissionCode": "support.job.view",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Job",
+        "action": "History",
+        "permissionCode": "support.job.view",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Job",
+        "action": "Logs",
+        "permissionCode": "support.job.view",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Job",
+        "action": "ToggleDefinition",
+        "permissionCode": "support.job.config",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Job",
+        "action": "Trigger",
+        "permissionCode": "support.job.trigger",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Me",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Message",
+        "requireTenantContext": true,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Message",
+        "action": "Inbox",
+        "permissionCode": "support.message.read",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Message",
+        "action": "RetryFailed",
+        "permissionCode": "support.message.send",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Message",
+        "action": "SendLogs",
+        "permissionCode": "support.message.read",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Message",
+        "action": "Sent",
+        "permissionCode": "support.message.read",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Message",
+        "action": "ToggleSubscription",
+        "permissionCode": "support.message.subscription",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "MessageStream",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "PortalAdmin",
+        "policy": "QlxPortalAdmin",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "PortalMenu",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "PortalRole",
+        "policy": "QlxPortalAdmin",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "PortalRolePermission",
+        "policy": "QlxPortalAdmin",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "PortalUserRole",
+        "policy": "QlxPortalAdmin",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Print",
+        "requireTenantContext": true,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Print",
+        "action": "Create",
+        "permissionCode": "support.print.template",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Print",
+        "action": "GetByCode",
+        "permissionCode": "support.print.template",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Print",
+        "action": "List",
+        "permissionCode": "support.print.template",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Print",
+        "action": "Render",
+        "permissionCode": "support.print.render",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Print",
+        "action": "SetStatus",
+        "permissionCode": "support.print.template",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "Print",
+        "action": "Update",
+        "permissionCode": "support.print.template",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "SystemParameters",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "requireTenantContext": true,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "CreateOrg",
+        "permissionCode": "bas.admin.org.action",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "CreateRole",
+        "permissionCode": "bas.admin.role.action",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "DeleteRole",
+        "permissionCode": "bas.admin.role.action",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "GetMemberDetail",
+        "permissionCode": "bas.admin.member.menu",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "GetMemberLoginLogs",
+        "permissionCode": "bas.admin.member.menu",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "GetMembers",
+        "permissionCode": "bas.admin.member.menu",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "GetOrgTree",
+        "permissionCode": "bas.admin.org.menu",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "GetPermissions",
+        "permissionCode": "bas.admin.role.menu",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "GetPositions",
+        "permissionCode": "bas.admin.org.menu",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "GetRoleMembers",
+        "permissionCode": "bas.admin.role.menu",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "GetRolePermissions",
+        "permissionCode": "bas.admin.role.menu",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "GetRoles",
+        "permissionCode": "bas.admin.role.menu",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "GetTenantModules",
+        "permissionCode": "bas.admin.role.menu",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "ImportMembers",
+        "permissionCode": "bas.admin.member.action",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "InviteMember",
+        "permissionCode": "bas.admin.member.action",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "RemoveMember",
+        "permissionCode": "bas.admin.member.action",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "ResendMemberInvite",
+        "permissionCode": "bas.admin.member.action",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "ResetMemberPassword",
+        "permissionCode": "bas.admin.member.action",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "SavePosition",
+        "permissionCode": "bas.admin.org.action",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "SaveRoleMembers",
+        "permissionCode": "bas.admin.role.action",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "SaveRolePermissions",
+        "permissionCode": "bas.admin.role.action",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "ToggleMemberStatus",
+        "permissionCode": "bas.admin.member.action",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "ToggleOrgStatus",
+        "permissionCode": "bas.admin.org.action",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "TogglePositionStatus",
+        "permissionCode": "bas.admin.org.action",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "UpdateOrg",
+        "permissionCode": "bas.admin.org.action",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantAdmin",
+        "action": "UpdateRole",
+        "permissionCode": "bas.admin.role.action",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantMemberRole",
+        "requireTenantContext": false,
+        "allowAnonymous": false
+      },
+      {
+        "controller": "TenantMenu",
+        "requireTenantContext": true,
+        "allowAnonymous": false
+      }
+    ],
+    "disabledKeys": []
+  }
+}

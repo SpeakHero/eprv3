@@ -1,4 +1,4 @@
-﻿/*
+/*
  * 所属公司：四川淇利馨集团有限公司
  * 作者：SpeakHero（491960352@qq.com）
  * 版本：1.0.0 beta
@@ -8,9 +8,7 @@
  */
 
 using System.Net.Mime;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenIddict.Validation.AspNetCore;
 using Qlx.BuildingBlocks.Api;
 using Qlx.Modules.Portal.Auth;
 using Qlx.Modules.Portal.Dtos;
@@ -23,9 +21,6 @@ namespace Qlx.Modules.Portal.Controllers;
 /// IsSystem=true 角色禁止修改权限（Service 层校验，Conflict 409）。
 /// </summary>
 [ApiController]
-[Authorize(
-    AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
-    Policy = QlxAuthConstants.Policies.PortalAdmin)]
 [Route("api/portal/admin/roles/{roleId}/permissions")]
 [Produces(MediaTypeNames.Application.Json)]
 public sealed class PortalRolePermissionController(

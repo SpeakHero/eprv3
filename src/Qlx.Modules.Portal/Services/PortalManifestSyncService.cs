@@ -42,7 +42,7 @@ namespace Qlx.Modules.Portal.Services;
 public sealed partial class PortalManifestSyncService(
     IDbContextFactory<PortalDbContext> dbFactory,
     ISnowflakeIdGenerator snowflake,
-    IEnumerable<IModule> modules,
+    IReadOnlyList<IModule> modules,
     ICacheService cache,
     ILogger<PortalManifestSyncService> logger) : IModuleManifestSyncService
 {
@@ -55,7 +55,9 @@ public sealed partial class PortalManifestSyncService(
     {
         ArgumentNullException.ThrowIfNull(modules);
 
-        var moduleList = modules as IList<IModule> ?? modules.ToList();
+        // 宿主以 IReadOnlyList<IModule> 单例注册（AddQlxModules），不可用 IEnumerable<IModule>
+        // 注入：DI 只从逐项注册的 IModule 解析 IEnumerable，会导致空集合、权限点从未物化。
+        var moduleList = modules;
         LogSyncAllStart(moduleList.Count);
 
         foreach (var module in moduleList)

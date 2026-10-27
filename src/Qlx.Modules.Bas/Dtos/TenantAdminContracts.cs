@@ -15,15 +15,17 @@ namespace Qlx.Modules.Bas.Dtos;
 // ================ Organization ================
 
 /// <summary>
-/// 组织扁平节点（前端组装 children 树 + 从成员列表填 managerName 等显示名）。
+/// 组织扁平节点（前端组装 children 树 + 从成员列表填 leaderName 等显示名）。
 /// MemberCount 为直属成员聚合计数（原始字段，后端一次查询分组计数，禁 N+1）。
+/// Code 由后端统一发号器生成（只读回显，N-1）。
 /// </summary>
 public sealed record OrganizationFlatRow(
     long Id,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] long? ParentId,
+    string Code,
     string Name,
-    string Type,          // Company/Department/Team
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] long? ManagerMemberId,
+    string Type,          // Group/Subsidiary/Department/Project
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.Never)] long? LeaderPersonId,
     string Status,        // Enabled/Disabled
     int SortOrder,
     bool IsBuiltin,
@@ -33,8 +35,8 @@ public sealed record OrganizationFlatRow(
 public sealed record SaveOrganizationPayload(
     long? ParentId,
     string Name,
-    string Type,          // Company/Department/Team
-    long? ManagerMemberId,
+    string Type,          // Group/Subsidiary/Department/Project（兼容数值枚举）
+    long? LeaderPersonId,
     int SortOrder);
 
 // ================ Position ================
@@ -48,6 +50,7 @@ public sealed record PositionRow(
     int CurrentCount,
     string Status,        // Enabled/Disabled
     string? Description,
+    string? Duty,
     DateTimeOffset UpdatedAt);
 
 public sealed record SavePositionPayload(
@@ -55,7 +58,8 @@ public sealed record SavePositionPayload(
     string Name,
     long OrgId,
     int Headcount,
-    string? Description);
+    string? Description,
+    string? Duty = null);
 
 // ================ Member（租户视角） ================
 

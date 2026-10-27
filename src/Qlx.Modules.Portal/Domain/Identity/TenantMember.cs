@@ -114,4 +114,16 @@ public sealed class TenantMember : Qlx.Abstractions.Domain.AuditableEntity
 
     /// <summary>恢复本租户内启用。</summary>
     public void Enable() => Status = MemberStatus.Enabled;
+
+    /// <summary>
+    /// 接受邀请激活（X-6 整改：管理员重置密码后成员首登，角色由待邀请转为普通成员并写入加入时间）。
+    /// </summary>
+    public void Activate()
+    {
+        if (Role == TenantMemberRole.PendingInvite)
+        {
+            Role = TenantMemberRole.OrdinaryMember;
+            JoinAt ??= DateTimeOffset.UtcNow;
+        }
+    }
 }

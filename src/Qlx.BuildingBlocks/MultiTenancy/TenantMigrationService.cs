@@ -87,7 +87,7 @@ public sealed partial class TenantMigrationService(
 
             // 按 BatchSize 分批（灰度：每次只处理前 N 个，避免一次性压垮租户库）
             var batch = _options.Value.BatchSize > 0
-                ? tenantIds.Take(_options.Value.BatchSize).ToList()
+                ? [.. tenantIds.Take(_options.Value.BatchSize)]
                 : tenantIds;
 
             if (batch.Count < tenantIds.Count)

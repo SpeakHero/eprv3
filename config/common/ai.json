@@ -1,0 +1,22 @@
+{
+  "Qlx": {
+    "Ai": {
+      "_comment": "API Key 禁止明文写入本文件（规则 C4）；经环境变量 Qlx__Ai__Providers__<厂商名>__ApiKey 注入；BaseUrl 省略时使用厂商默认地址",
+      "Enabled": false,
+      "Strategy": "Fixed",
+      "FixedProvider": "zhipu",
+      "TimeoutSeconds": 30,
+      "LogRequestContent": false,
+      "MaxLogContentLength": 200,
+      "Providers": {
+        "zhipu": { "Type": "zhipu", "Model": "glm-4.7-flash", "Enabled": true, "Priority": 10 },
+        "dashscope": { "Type": "dashscope", "Model": "qwen-plus", "Enabled": true, "Priority": 20 },
+        "volcengine": { "Type": "volcengine", "Model": "doubao-seed-1-6-flash-250828", "Enabled": false, "Priority": 30 },
+        "siliconflow": { "Type": "siliconflow", "Model": "Qwen/Qwen2.5-7B-Instruct", "Enabled": true, "Priority": 40 },
+        "deepseek": { "Type": "deepseek", "Model": "deepseek-chat", "Enabled": false, "Priority": 50 },
+        "qianfan": { "Type": "qianfan", "Model": "ernie-4.5-turbo-32k", "Enabled": false, "Priority": 60 },
+        "ollama": { "Type": "ollama", "Model": "qwen2.5:7b", "Enabled": false, "Priority": 70 }
+      }
+    }
+  }
+}

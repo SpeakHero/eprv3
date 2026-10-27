@@ -1,0 +1,1268 @@
+{
+  "title": "阶段三第二波 2B（04 物流作业全量）端到端冒烟",
+  "startedAt": "2026-10-26T22:37:38",
+  "base": {
+    "web": "http://localhost:5173",
+    "api": "http://localhost:5002",
+    "tenantId": 106001473065717760
+  },
+  "data": {
+    "session": {
+      "licensedModules": [
+        "portal",
+        "bas",
+        "stk",
+        "wms",
+        "support"
+      ],
+      "tenantTokenLength": 2955
+    },
+    "license": {
+      "initial": [
+        "portal",
+        "bas",
+        "stk",
+        "wms",
+        "support"
+      ],
+      "added": [],
+      "final": [
+        "portal",
+        "bas",
+        "stk",
+        "wms",
+        "support"
+      ]
+    },
+    "tenantMenus": {
+      "routes": [
+        "/manage/organizations",
+        "/manage/members",
+        "/manage/roles",
+        "/manage/master/categories",
+        "/manage/master/units",
+        "/manage/master/suppliers",
+        "/manage/master/customers",
+        "/manage/master/persons",
+        "/manage/master/dictionaries",
+        "/manage/master/code-rules",
+        "/manage/changelogs",
+        "/manage/stk/items",
+        "/manage/stk/openings",
+        "/manage/stk/ledger",
+        "/manage/stk/txns",
+        "/manage/stk/cost-adjust",
+        "/manage/stk/batches",
+        "/manage/wms/warehouses",
+        "/manage/wms/inbound",
+        "/manage/wms/outbound",
+        "/manage/wms/transfers",
+        "/manage/wms/stocktakes",
+        "/manage/wms/adjustments",
+        "/manage/wms/alerts"
+      ],
+      "sidebarItems": {
+        "入库作业": true,
+        "出库作业": true,
+        "物资调拨": true,
+        "库存盘点": true,
+        "盘盈盘亏": true,
+        "库存预警": true
+      }
+    },
+    "categoryId": "njM5PvKe",
+    "categoryName": "自动化验证分类180626",
+    "unitId": "njM5PvKe",
+    "warehouseCodeRetry": [
+      1,
+      1
+    ],
+    "warehouseIdA": "60bQDyAWRJap",
+    "warehouseCodeA": "WH-SYS-202610-000018",
+    "warehouseNameA": "2B冒烟调出仓223738",
+    "zoneId": "GwByRK5Arzp9",
+    "locationId": "WDeBl3KyQ6rl",
+    "warehouseIdB": "d3JkK8Ag36ln",
+    "warehouseCodeB": "WH-SYS-202610-000019",
+    "warehouseNameB": "2B冒烟调入仓223738",
+    "itemId": "oW4karoeGlap",
+    "itemCode": "010012",
+    "itemBatchEnabled": true,
+    "batchNo": "223738-B1",
+    "docNoRetry": [
+      {
+        "入库作业": 1
+      },
+      {
+        "出库作业": 1
+      },
+      {
+        "调拨单": 1
+      },
+      {
+        "盘点计划": 1
+      },
+      {
+        "盘点单生成": 1
+      },
+      {
+        "初盘完成": 1
+      },
+      {
+        "复盘完成": 1
+      }
+    ],
+    "stockInTaskNo": "WL-RK-SYS-202610-000007",
+    "stockInLedger": {
+      "itemId": "oW4karoeGlap",
+      "warehouseId": "60bQDyAWRJap",
+      "qtyOnhand": 100.0,
+      "avgCost": 10.0,
+      "amount": 1000.0,
+      "qtyLocked": 0.0,
+      "lastTxnAt": "2026-10-26T14:37:55.67024+00:00"
+    },
+    "stockOutTaskNo": "WL-CK-SYS-202610-000007",
+    "stockOutTotalAmount": 300.0,
+    "transferId": "K5g0nRn5JkxV",
+    "transferNo": "WL-DB-SYS-202610-000007",
+    "transferApprovalInstanceId": "108212522795925504",
+    "inTransitRow": {
+      "id": "8qzn9nVPPBl4",
+      "transferId": "K5g0nRn5JkxV",
+      "transferNo": "WL-DB-SYS-202610-000007",
+      "transferLineId": "xyVbXeXyLnqY",
+      "itemId": "oW4karoeGlap",
+      "fromWarehouseId": "60bQDyAWRJap",
+      "toWarehouseId": "d3JkK8Ag36ln",
+      "batchNo": "223738-B1",
+      "qty": 20.0,
+      "unitCost": 10.0,
+      "shippedAt": "2026-10-26T14:37:57.3642049+00:00",
+      "expectArrive": "2026-10-29T14:37:57.3642049+00:00",
+      "status": 1
+    },
+    "planId": "3PWmBm9xBaP6",
+    "planNo": "WL-PDJH-SYS-202610-000007",
+    "takeId": "04Pd1da3exAE",
+    "takeNo": "WL-PD-SYS-202610-000010",
+    "takeLines": [
+      {
+        "id": "rZBqjq9VlPA2",
+        "lineNo": 1,
+        "itemId": "oW4karoeGlap",
+        "batchNo": "223738-B1",
+        "bookQty": 50.0,
+        "frozen": true
+      }
+    ],
+    "lockedAfterGenerate": 50.0,
+    "recheckTakeId": "K5g0n0nnJ2br",
+    "recheckTakeNo": "WL-PD-SYS-202610-000011",
+    "recheckLines": [
+      {
+        "id": "xyVbXbXXLY39",
+        "lineNo": 1,
+        "itemId": "oW4karoeGlap",
+        "batchNo": "223738-B1",
+        "bookQty": 50.0,
+        "frozen": false
+      }
+    ],
+    "adjustId": "GwBy8yB1zd3J",
+    "adjustNo": "WL-PYK-SYS-202610-000003",
+    "adjustType": 2,
+    "adjustApprovalInstanceId": "108212530739937280",
+    "alertId": "04Pd1ErejVYa",
+    "alertRow": {
+      "id": "04Pd1ErejVYa",
+      "alertType": 1,
+      "itemId": "oW4karoeGlap",
+      "warehouseId": "60bQDyAWRJap",
+      "batchNo": "",
+      "threshold": 100.0,
+      "actualValue": 45.0,
+      "alertDate": "2026-10-26",
+      "status": 1,
+      "createdAt": "2026-10-26T14:37:59.8860454+00:00"
+    },
+    "apiFinal": {
+      "balanceA": {
+        "itemId": "oW4karoeGlap",
+        "warehouseId": "60bQDyAWRJap",
+        "qtyOnhand": 45.0,
+        "avgCost": 10.0,
+        "amount": 450.0,
+        "qtyLocked": 0.0,
+        "lastTxnAt": "2026-10-26T14:37:58.8014255+00:00"
+      },
+      "balanceB": {
+        "itemId": "oW4karoeGlap",
+        "warehouseId": "d3JkK8Ag36ln",
+        "qtyOnhand": 20.0,
+        "avgCost": 10.0,
+        "amount": 200.0,
+        "qtyLocked": 0.0,
+        "lastTxnAt": "2026-10-26T14:37:57.5201147+00:00"
+      },
+      "sourceTypes": [
+        2,
+        4,
+        7,
+        8,
+        9
+      ],
+      "txnCount": 5
+    }
+  },
+  "steps": {
+    "01_login": {
+      "ok": true,
+      "detail": {
+        "licensedModules": [
+          "portal",
+          "bas",
+          "stk",
+          "wms",
+          "support"
+        ],
+        "tenantTokenLength": 2955
+      },
+      "ms": 8267
+    },
+    "01b_license": {
+      "ok": true,
+      "detail": {
+        "initial": [
+          "portal",
+          "bas",
+          "stk",
+          "wms",
+          "support"
+        ],
+        "added": [],
+        "final": [
+          "portal",
+          "bas",
+          "stk",
+          "wms",
+          "support"
+        ]
+      },
+      "ms": 0
+    },
+    "02_menu": {
+      "ok": true,
+      "detail": {
+        "routes": [
+          "/manage/wms/inbound",
+          "/manage/wms/outbound",
+          "/manage/wms/transfers",
+          "/manage/wms/stocktakes",
+          "/manage/wms/adjustments",
+          "/manage/wms/alerts"
+        ],
+        "sidebarItems": {
+          "入库作业": true,
+          "出库作业": true,
+          "物资调拨": true,
+          "库存盘点": true,
+          "盘盈盘亏": true,
+          "库存预警": true
+        }
+      },
+      "ms": 2908
+    },
+    "03_base_master": {
+      "ok": true,
+      "detail": {
+        "category": "自动化验证分类180626",
+        "unit": "件"
+      },
+      "ms": 55
+    },
+    "04_warehouse_a": {
+      "ok": true,
+      "detail": {
+        "warehouse": {
+          "id": "60bQDyAWRJap",
+          "code": "WH-SYS-202610-000018",
+          "name": "2B冒烟调出仓223738",
+          "whType": 1,
+          "address": "四川省成都市 2B 冒烟地址 A",
+          "remark": "2B 冒烟自动创建",
+          "status": 1,
+          "approvalRequired": false
+        },
+        "zone": {
+          "id": "GwByRK5Arzp9",
+          "warehouseId": "60bQDyAWRJap",
+          "code": "ZA223738",
+          "name": "2B冒烟库区A223738",
+          "sortOrder": 1,
+          "status": 1
+        },
+        "location": {
+          "id": "WDeBl3KyQ6rl",
+          "warehouseId": "60bQDyAWRJap",
+          "zoneId": "GwByRK5Arzp9",
+          "code": "LA223738",
+          "sortOrder": 1,
+          "status": 1
+        }
+      },
+      "ms": 82
+    },
+    "05_warehouse_b": {
+      "ok": true,
+      "detail": {
+        "warehouse": {
+          "id": "d3JkK8Ag36ln",
+          "code": "WH-SYS-202610-000019",
+          "name": "2B冒烟调入仓223738",
+          "whType": 1,
+          "address": "四川省成都市 2B 冒烟地址 B",
+          "remark": "2B 冒烟自动创建",
+          "status": 1,
+          "approvalRequired": false
+        }
+      },
+      "ms": 15
+    },
+    "05b_resolve_db": {
+      "ok": true,
+      "detail": {
+        "database": "qlx_dev"
+      },
+      "ms": 4490
+    },
+    "06_item_create": {
+      "ok": true,
+      "detail": {
+        "itemId": "oW4karoeGlap",
+        "itemCode": "010012",
+        "batchEnabled": true
+      },
+      "ms": 514
+    },
+    "07_stock_in": {
+      "ok": true,
+      "detail": {
+        "taskNo": "WL-RK-SYS-202610-000007",
+        "dispatch": {
+          "mode": "sync",
+          "status": "success"
+        },
+        "balance": {
+          "qtyOnhand": 100.0,
+          "avgCost": 10.0,
+          "amount": 1000.0
+        }
+      },
+      "ms": 109
+    },
+    "08_stock_out": {
+      "ok": true,
+      "detail": {
+        "taskNo": "WL-CK-SYS-202610-000007",
+        "totalAmount": 300.0,
+        "dispatch": {
+          "mode": "sync",
+          "status": "success"
+        },
+        "balance": {
+          "qtyOnhand": 70.0
+        }
+      },
+      "ms": 165
+    },
+    "09_transfer_create": {
+      "ok": true,
+      "detail": {
+        "transferNo": "WL-DB-SYS-202610-000007",
+        "instanceId": "108212522795925504",
+        "approvedActions": 3,
+        "status": 2
+      },
+      "ms": 1441
+    },
+    "10_transfer_ship": {
+      "ok": true,
+      "detail": {
+        "dispatch": {
+          "mode": "sync",
+          "status": "success"
+        },
+        "balanceA": 50.0,
+        "inTransit": {
+          "id": "8qzn9nVPPBl4",
+          "transferId": "K5g0nRn5JkxV",
+          "transferNo": "WL-DB-SYS-202610-000007",
+          "transferLineId": "xyVbXeXyLnqY",
+          "itemId": "oW4karoeGlap",
+          "fromWarehouseId": "60bQDyAWRJap",
+          "toWarehouseId": "d3JkK8Ag36ln",
+          "batchNo": "223738-B1",
+          "qty": 20.0,
+          "unitCost": 10.0,
+          "shippedAt": "2026-10-26T14:37:57.3642049+00:00",
+          "expectArrive": "2026-10-29T14:37:57.3642049+00:00",
+          "status": 1
+        }
+      },
+      "ms": 121
+    },
+    "11_transfer_receive": {
+      "ok": true,
+      "detail": {
+        "dispatch": {
+          "mode": "sync",
+          "status": "success"
+        },
+        "balanceB": 20.0,
+        "inTransitClosed": true,
+        "status": 4
+      },
+      "ms": 135
+    },
+    "12_stocktake_generate": {
+      "ok": true,
+      "detail": {
+        "planNo": "WL-PDJH-SYS-202610-000007",
+        "takeNo": "WL-PD-SYS-202610-000010",
+        "lineCount": 1,
+        "qtyLocked": 50.0
+      },
+      "ms": 44
+    },
+    "13_stocktake_initial": {
+      "ok": true,
+      "detail": {
+        "book": 50.0,
+        "actual": 45.0,
+        "diff": -5.0,
+        "recheckTakeNo": "WL-PD-SYS-202610-000011",
+        "qtyLocked": 50.0
+      },
+      "ms": 80
+    },
+    "14_stocktake_recheck": {
+      "ok": true,
+      "detail": {
+        "qtyLocked": 0.0,
+        "adjustNo": "WL-PYK-SYS-202610-000003",
+        "adjustType": 2,
+        "draftQty": 50.0
+      },
+      "ms": 84
+    },
+    "15_adjust_approve": {
+      "ok": true,
+      "detail": {
+        "instanceId": "108212530739937280",
+        "approvedActions": 2,
+        "status": 3,
+        "dispatch": {
+          "mode": "sync",
+          "status": "success"
+        },
+        "balance": {
+          "qtyOnhand": 45.0,
+          "amount": 450.0,
+          "avgCost": 10.0
+        }
+      },
+      "ms": 2022
+    },
+    "16_alert": {
+      "ok": true,
+      "detail": {
+        "scan": {
+          "resultJson": {
+            "alertDate": "2026-10-26",
+            "safetyStock": 2,
+            "stagnant": 0,
+            "nearExpiry": 0,
+            "inTransitOverdue": 0,
+            "created": 2
+          },
+          "executionDurationMs": 20,
+          "isSuccess": true
+        },
+        "alert": {
+          "type": 1,
+          "threshold": 100.0,
+          "actualValue": 45.0
+        },
+        "handledStatus": 2
+      },
+      "ms": 116
+    },
+    "17_pages": {
+      "ok": true,
+      "detail": {
+        "inbound": true,
+        "outbound": true,
+        "transfer": true,
+        "stocktake": true,
+        "adjust": true,
+        "alert": true,
+        "ledger": true,
+        "txns": true,
+        "approvalCenter": true
+      },
+      "ms": 30988
+    },
+    "18_api_verify": {
+      "ok": true,
+      "detail": {
+        "checks": {
+          "balanceA_qty45": true,
+          "balanceA_amount450": true,
+          "balanceA_avg10": true,
+          "balanceA_locked0": true,
+          "balanceB_qty20": true,
+          "balanceB_amount200": true,
+          "balanceB_locked0": true,
+          "txnSources": true
+        },
+        "sourceTypes": [
+          2,
+          4,
+          7,
+          8,
+          9
+        ],
+        "txnCount": 5
+      },
+      "ms": 47
+    },
+    "19_sql_verify": {
+      "ok": true,
+      "detail": {
+        "checks": {
+          "sql_balA_qty45": true,
+          "sql_balA_amount450": true,
+          "sql_balA_avg10": true,
+          "sql_balA_locked0": true,
+          "sql_balB_qty20": true,
+          "sql_balB_amount200": true,
+          "sql_balB_locked0": true,
+          "sql_txnA_purchase2": true,
+          "sql_txnA_sale7": true,
+          "sql_txnA_transferOut8": true,
+          "sql_txnA_loss9": true,
+          "sql_txnB_transferIn4": true,
+          "sql_outbox_allDispatched": true,
+          "sql_outbox_count>=5": true,
+          "sql_outbox_noError": true,
+          "sql_transfer_status4": true,
+          "sql_transit_closed2": true,
+          "sql_transit_qty20": true,
+          "sql_take_initial3": true,
+          "sql_take_recheck5": true,
+          "sql_take_initialUnfrozen": true,
+          "sql_take_recheckUnfrozen": true,
+          "sql_adjust_type2": true,
+          "sql_adjust_status3": true,
+          "sql_adjust_qty5": true,
+          "sql_alert_threshold100": true,
+          "sql_alert_actual45": true,
+          "sql_alert_handled2": true,
+          "sql_transferReqApplied": true,
+          "sql_adjustReqApplied": true
+        }
+      },
+      "ms": 3512
+    }
+  },
+  "apiCalls": [
+    {
+      "method": "GET",
+      "path": "/api/tenant/menus",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/bas/categories",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/bas/unit-groups",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/bas/units",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/warehouses",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/warehouses/60bQDyAWRJap/zones",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/warehouses/60bQDyAWRJap/locations?zoneId=GwByRK5Arzp9",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/warehouses",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/stk/items",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/instance/108212519503396864",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/approvals/108212519503396864/approve",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/instance/108212519503396864",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/stk/items",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/stock-in-tasks",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/stock-in-tasks/WDeBGXYpPplj/start",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/stock-in-tasks/WDeBGXYpPplj/complete",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/jobs/trigger",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/stk/ledger?itemId=oW4karoeGlap&warehouseId=60bQDyAWRJap",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/stock-out-tasks",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/stock-out-tasks/K5g0nRxgo8wr/pick",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/stock-out-tasks/K5g0nRxgo8wr/check",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/stock-out-tasks/K5g0nRxgo8wr/complete",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/jobs/trigger",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/stk/ledger?itemId=oW4karoeGlap&warehouseId=60bQDyAWRJap",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/transfers",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/my-initiated",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/instance/108212522795925504",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/approvals/108212522795925504/approve",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/instance/108212522795925504",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/approvals/108212522795925504/approve",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/instance/108212522795925504",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/approvals/108212522795925504/approve",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/instance/108212522795925504",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/wms/transfers/K5g0nRn5JkxV",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/wms/transfers/K5g0nRn5JkxV",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/transfers/K5g0nRn5JkxV/ship",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/jobs/trigger",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/stk/ledger?itemId=oW4karoeGlap&warehouseId=60bQDyAWRJap",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/wms/transfers/in-transit",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/wms/transfers/K5g0nRn5JkxV",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/transfers/K5g0nRn5JkxV/receive",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/jobs/trigger",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/stk/ledger?itemId=oW4karoeGlap&warehouseId=d3JkK8Ag36ln",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/wms/transfers/in-transit",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/stock-take-plans",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/stock-take-plans/3PWmBm9xBaP6/generate",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/stk/ledger?itemId=oW4karoeGlap&warehouseId=60bQDyAWRJap",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/stock-takes/04Pd1da3exAE/start",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/stock-takes/04Pd1da3exAE/save-counts",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/stock-takes/04Pd1da3exAE/finish",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/wms/stock-takes/K5g0n0nnJ2br",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/stk/ledger?itemId=oW4karoeGlap&warehouseId=60bQDyAWRJap",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/stock-takes/K5g0n0nnJ2br/save-counts",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/stock-takes/K5g0n0nnJ2br/finish",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/stk/ledger?itemId=oW4karoeGlap&warehouseId=60bQDyAWRJap",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/wms/inventory-adjusts?status=1&warehouseId=60bQDyAWRJap",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/inventory-adjusts/GwBy8yB1zd3J/submit",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/my-initiated",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/instance/108212530739937280",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/approvals/108212530739937280/approve",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/instance/108212530739937280",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/approvals/108212530739937280/approve",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/instance/108212530739937280",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/wms/inventory-adjusts/GwBy8yB1zd3J",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/wms/inventory-adjusts/GwBy8yB1zd3J",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/jobs/trigger",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/stk/ledger?itemId=oW4karoeGlap&warehouseId=60bQDyAWRJap",
+      "status": 200
+    },
+    {
+      "method": "PUT",
+      "path": "/api/portal/system-parameters/wms.alert.safety.stock",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/jobs/trigger",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/wms/inventory-alerts?warehouseId=60bQDyAWRJap",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/inventory-alerts/04Pd1ErejVYa/handle",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/stk/ledger?itemId=oW4karoeGlap&warehouseId=60bQDyAWRJap",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/stk/ledger?itemId=oW4karoeGlap&warehouseId=d3JkK8Ag36ln",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/stk/txns?itemId=oW4karoeGlap",
+      "status": 200
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/portal/system-parameters/wms.alert.safety.stock",
+      "status": 200
+    }
+  ],
+  "sql": {
+    "transit": [
+      {
+        "unit_cost": 10.0,
+        "status": 2,
+        "qty": 20.0,
+        "transfer_no": "WL-DB-SYS-202610-000007"
+      }
+    ],
+    "takeLines": [
+      {
+        "actual_qty": 45.0,
+        "diff_qty": -5.0,
+        "frozen": false,
+        "take_no": "WL-PD-SYS-202610-000010",
+        "line_no": 1,
+        "book_qty": 50.0
+      },
+      {
+        "actual_qty": 45.0,
+        "diff_qty": -5.0,
+        "frozen": false,
+        "take_no": "WL-PD-SYS-202610-000011",
+        "line_no": 1,
+        "book_qty": 50.0
+      }
+    ],
+    "approvalReqs": [
+      {
+        "biz_type": "wms.transfer",
+        "status": 2
+      },
+      {
+        "biz_type": "wms.transfer",
+        "status": 2
+      },
+      {
+        "biz_type": "wms.transfer",
+        "status": 2
+      },
+      {
+        "biz_type": "wms.inventory.adjust",
+        "status": 2
+      },
+      {
+        "biz_type": "wms.transfer",
+        "status": 2
+      },
+      {
+        "biz_type": "wms.transfer",
+        "status": 2
+      },
+      {
+        "biz_type": "wms.transfer",
+        "status": 2
+      },
+      {
+        "biz_type": "wms.inventory.adjust",
+        "status": 2
+      },
+      {
+        "biz_type": "wms.transfer",
+        "status": 2
+      },
+      {
+        "biz_type": "wms.inventory.adjust",
+        "status": 2
+      }
+    ],
+    "txns": [
+      {
+        "source_type": 2,
+        "txn_no": "SP-LS-SYS-202610-000006",
+        "unit_cost": 10.0,
+        "source_doc_no": "WL-RK-SYS-202610-000007",
+        "qty": 100.0,
+        "direction": 1,
+        "wh_code": "WH-SYS-202610-000018",
+        "batch_no": "223738-B1",
+        "balance_qty_after": 100.0,
+        "amount": 1000.0
+      },
+      {
+        "source_type": 7,
+        "txn_no": "SP-LS-SYS-202610-000007",
+        "unit_cost": 10.0,
+        "source_doc_no": "WL-CK-SYS-202610-000007",
+        "qty": 30.0,
+        "direction": 2,
+        "wh_code": "WH-SYS-202610-000018",
+        "batch_no": "223738-B1",
+        "balance_qty_after": 70.0,
+        "amount": 300.0
+      },
+      {
+        "source_type": 8,
+        "txn_no": "SP-LS-SYS-202610-000008",
+        "unit_cost": 10.0,
+        "source_doc_no": "WL-DB-SYS-202610-000007",
+        "qty": 20.0,
+        "direction": 2,
+        "wh_code": "WH-SYS-202610-000018",
+        "batch_no": "223738-B1",
+        "balance_qty_after": 50.0,
+        "amount": 200.0
+      },
+      {
+        "source_type": 4,
+        "txn_no": "SP-LS-SYS-202610-000009",
+        "unit_cost": 10.0,
+        "source_doc_no": "WL-DB-SYS-202610-000007",
+        "qty": 20.0,
+        "direction": 1,
+        "wh_code": "WH-SYS-202610-000019",
+        "batch_no": "223738-B1",
+        "balance_qty_after": 20.0,
+        "amount": 200.0
+      },
+      {
+        "source_type": 9,
+        "txn_no": "SP-LS-SYS-202610-000010",
+        "unit_cost": 10.0,
+        "source_doc_no": "WL-PYK-SYS-202610-000003",
+        "qty": 5.0,
+        "direction": 2,
+        "wh_code": "WH-SYS-202610-000018",
+        "batch_no": "223738-B1",
+        "balance_qty_after": 45.0,
+        "amount": 50.0
+      }
+    ],
+    "adjusts": [
+      {
+        "adjust_no": "WL-PYK-SYS-202610-000003",
+        "status": 3,
+        "take_id": 108212530182094848,
+        "total_amount": 50.0,
+        "type": 2
+      }
+    ],
+    "balances": [
+      {
+        "amount": 450.0,
+        "avg_cost": 10.0,
+        "qty_locked": 0.0,
+        "wh_code": "WH-SYS-202610-000018",
+        "qty_onhand": 45.0
+      },
+      {
+        "amount": 200.0,
+        "avg_cost": 10.0,
+        "qty_locked": 0.0,
+        "wh_code": "WH-SYS-202610-000019",
+        "qty_onhand": 20.0
+      }
+    ],
+    "transfers": [
+      {
+        "status": 4,
+        "transfer_no": "WL-DB-SYS-202610-000007"
+      }
+    ],
+    "outboxRows": [
+      {
+        "retry_count": 0,
+        "idempotency_key": "wms:py:WL-PYK-SYS-202610-000003:1",
+        "dispatched_at": "/Date(1793025479806)/",
+        "last_error": null,
+        "state": 2
+      },
+      {
+        "retry_count": 0,
+        "idempotency_key": "wms:db-in:WL-DB-SYS-202610-000007:1",
+        "dispatched_at": "/Date(1793025477543)/",
+        "last_error": null,
+        "state": 2
+      },
+      {
+        "retry_count": 0,
+        "idempotency_key": "wms:db-out:WL-DB-SYS-202610-000007:1",
+        "dispatched_at": "/Date(1793025477395)/",
+        "last_error": null,
+        "state": 2
+      },
+      {
+        "retry_count": 0,
+        "idempotency_key": "wms:ck:WL-CK-SYS-202610-000007:1",
+        "dispatched_at": "/Date(1793025475872)/",
+        "last_error": null,
+        "state": 2
+      },
+      {
+        "retry_count": 0,
+        "idempotency_key": "wms:rk:WL-RK-SYS-202610-000007:1",
+        "dispatched_at": "/Date(1793025475702)/",
+        "last_error": null,
+        "state": 2
+      }
+    ],
+    "outboxGroups": [
+      {
+        "state": 2,
+        "cnt": 5
+      }
+    ],
+    "alerts": [
+      {
+        "wh_code": "WH-SYS-202610-000018",
+        "status": 2,
+        "threshold": 100.0,
+        "alert_type": 1,
+        "actual_value": 45.0
+      },
+      {
+        "wh_code": "WH-SYS-202610-000019",
+        "status": 1,
+        "threshold": 100.0,
+        "alert_type": 1,
+        "actual_value": 20.0
+      }
+    ],
+    "takes": [
+      {
+        "status": 3,
+        "round": 1,
+        "take_no": "WL-PD-SYS-202610-000010"
+      },
+      {
+        "status": 5,
+        "round": 2,
+        "take_no": "WL-PD-SYS-202610-000011"
+      }
+    ]
+  },
+  "screenshots": [
+    "00-login.png",
+    "01-workbench.png",
+    "02-menu.png",
+    "03-inbound-list.png",
+    "04-outbound-list.png",
+    "05-transfer-list.png",
+    "06-transfer-in-transit.png",
+    "07-stocktake-plans.png",
+    "08-stocktake-takes.png",
+    "09-adjustments.png",
+    "10-alerts.png",
+    "11-ledger.png",
+    "12-txns.png",
+    "13-approval-center.png"
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "httpErrors": [],
+  "sqlDatabase": "qlx_dev",
+  "sqlChecks": {
+    "sql_balA_qty45": true,
+    "sql_balA_amount450": true,
+    "sql_balA_avg10": true,
+    "sql_balA_locked0": true,
+    "sql_balB_qty20": true,
+    "sql_balB_amount200": true,
+    "sql_balB_locked0": true,
+    "sql_txnA_purchase2": true,
+    "sql_txnA_sale7": true,
+    "sql_txnA_transferOut8": true,
+    "sql_txnA_loss9": true,
+    "sql_txnB_transferIn4": true,
+    "sql_outbox_allDispatched": true,
+    "sql_outbox_count>=5": true,
+    "sql_outbox_noError": true,
+    "sql_transfer_status4": true,
+    "sql_transit_closed2": true,
+    "sql_transit_qty20": true,
+    "sql_take_initial3": true,
+    "sql_take_recheck5": true,
+    "sql_take_initialUnfrozen": true,
+    "sql_take_recheckUnfrozen": true,
+    "sql_adjust_type2": true,
+    "sql_adjust_status3": true,
+    "sql_adjust_qty5": true,
+    "sql_alert_threshold100": true,
+    "sql_alert_actual45": true,
+    "sql_alert_handled2": true,
+    "sql_transferReqApplied": true,
+    "sql_adjustReqApplied": true
+  },
+  "paramRestored": true,
+  "finishedAt": "2026-10-26T22:38:35",
+  "ok": true,
+  "stepSummary": {
+    "01_login": true,
+    "01b_license": true,
+    "02_menu": true,
+    "03_base_master": true,
+    "04_warehouse_a": true,
+    "05_warehouse_b": true,
+    "05b_resolve_db": true,
+    "06_item_create": true,
+    "07_stock_in": true,
+    "08_stock_out": true,
+    "09_transfer_create": true,
+    "10_transfer_ship": true,
+    "11_transfer_receive": true,
+    "12_stocktake_generate": true,
+    "13_stocktake_initial": true,
+    "14_stocktake_recheck": true,
+    "15_adjust_approve": true,
+    "16_alert": true,
+    "17_pages": true,
+    "18_api_verify": true,
+    "19_sql_verify": true
+  }
+}

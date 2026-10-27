@@ -3,7 +3,7 @@
  * 作者：SpeakHero（491960352@qq.com）
  * 版本：1.0.0 beta
  * 创建时间：2026-10-21 00:30:00 +08:00 中国标准时间 星期三
- * 修改时间：2026-10-21 02:00:00 +08:00 中国标准时间 星期三
+ * 修改时间：2026-10-26
  * 描述：审计服务集合扩展：注册 AuditDbContext + EfCoreAuditService + 拦截器
  */
 
@@ -67,5 +67,6 @@ public static class AuditServiceCollectionExtensions
         public string? UserId => null;
         public string? UserName => null;
         public string? UserDisplayName => null;
+        public string? CurrentUserIp => null;
     }
 }

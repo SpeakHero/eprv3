@@ -3,8 +3,9 @@
  * 作者：SpeakHero（491960352@qq.com）
  * 版本：1.0.0 beta
  * 创建时间：2026-10-23 11:20:00 +08:00 中国标准时间 星期五
+ * 修改时间：2026-10-25 11:00:00 +08:00 中国标准时间 星期日
  * 描述：审批流程注册表测试——代码定义内存注册、R1 唯一启用解析（组织范围 / 版本 / 多命中冲突）、
- *       R2 按锁定定义 Id 装载、R3 兜底分支完整性校验
+ *       R2 按锁定定义 Id 装载、R3 兜底分支完整性校验（种子默认流程数随 Stk/Wms 11 条追加更新为 22）
  */
 
 using Microsoft.EntityFrameworkCore;
@@ -25,13 +26,13 @@ namespace Qlx.BuildingBlocks.Tests.Approvals;
 
 /// <summary>
 /// <see cref="ApprovalFlowRegistry"/> 单元测试（InMemory 提供程序 + 真实 SupportTenantDbContext +
-/// 真实种子服务种入 4 个默认流程）。
+/// 真实种子服务种入 22 个默认流程）。
 /// </summary>
 public sealed class ApprovalFlowRegistryTests
 {
     private const long TenantId = 9L;
 
-    /// <summary>构建（注册表, 上下文）对：真实种子服务种入 4 个默认流程。</summary>
+    /// <summary>构建（注册表, 上下文）对：真实种子服务种入 22 个默认流程。</summary>
     private static (ApprovalFlowRegistry Registry, SupportTenantDbContext Db) Build()
     {
         var db = new SupportTenantDbContext(
@@ -131,7 +132,7 @@ public sealed class ApprovalFlowRegistryTests
 
         Assert.NotNull(flow);
         Assert.Equal("flow.purchase.request", flow!.Definition.DefCode);
-        Assert.Equal(4, await db.FlowDefinitions.CountAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(22, await db.FlowDefinitions.CountAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -143,7 +144,7 @@ public sealed class ApprovalFlowRegistryTests
             "biz.not.seeded", orgId: 0, TestContext.Current.CancellationToken);
 
         Assert.Null(flow);
-        Assert.Equal(4, await db.FlowDefinitions.CountAsync(TestContext.Current.CancellationToken));
+        Assert.Equal(22, await db.FlowDefinitions.CountAsync(TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -175,6 +176,47 @@ public sealed class ApprovalFlowRegistryTests
 
         Assert.Null(await registry.ResolveEnabledAsync("sal_order", orgId: 400, TestContext.Current.CancellationToken));
         Assert.NotNull(await registry.ResolveEnabledAsync("sal_order", orgId: 300, TestContext.Current.CancellationToken));
+    }
+
+    // ============ 显式定义编码解析（同单据类型挂多条流程） ============
+
+    [Fact]
+    public async Task SameBizTypeMultipleEnabledFlowsRequiresExplicitCode()
+    {
+        var (registry, _) = Build();
+        // 调拨「同公司 / 跨公司」两条流程共用 biz_type，按 biz_type 解析必然多命中（R1 冲突）
+        await Assert.ThrowsAsync<ConflictException>(() => registry.ResolveEnabledAsync(
+            "wms.transfer", orgId: 0, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task ResolveByCodePicksExplicitFlowSharingBizType()
+    {
+        var (registry, _) = Build();
+
+        var cross = await registry.ResolveByCodeAsync(
+            "flow.wms.transfer.cross", TestContext.Current.CancellationToken);
+        var internalFlow = await registry.ResolveByCodeAsync(
+            "flow.wms.transfer.internal", TestContext.Current.CancellationToken);
+
+        Assert.NotNull(cross);
+        Assert.NotNull(internalFlow);
+        Assert.Equal("wms.transfer", cross!.Definition.BizType);
+        Assert.Equal(3, cross.Nodes.Count);
+        Assert.Equal(2, internalFlow!.Nodes.Count);
+    }
+
+    [Fact]
+    public async Task ResolveByUnknownCodeReturnsNull()
+    {
+        var (registry, db) = Build();
+
+        var flow = await registry.ResolveByCodeAsync(
+            "flow.not.exists", TestContext.Current.CancellationToken);
+
+        Assert.Null(flow);
+        // 懒种子仍按 DefCode 幂等补齐默认流程，不受未知编码影响
+        Assert.Equal(22, await db.FlowDefinitions.CountAsync(TestContext.Current.CancellationToken));
     }
 
     // ============ R2 按锁定定义 Id 装载 ============

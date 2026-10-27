@@ -49,7 +49,8 @@ internal sealed class TenantMemberQuery(
 
     public async Task<(IReadOnlyList<TenantMemberSummaryRow> Items, int Total)> QueryMembersAsync(
         long tenantId, string? keyword, long? orgId, int? role, int? status,
-        int skip, int take, CancellationToken cancellationToken)
+        int skip, int take, CancellationToken cancellationToken,
+        IReadOnlyCollection<long>? orgIds = null, long? onlyMemberId = null)
     {
         await using var db = await dbFactory.CreateDbContextAsync(cancellationToken);
 
@@ -58,6 +59,9 @@ internal sealed class TenantMemberQuery(
         if (orgId.HasValue) baseFilter = baseFilter.Where(m => m.OrgId == orgId.Value);
         if (role.HasValue) baseFilter = baseFilter.Where(m => (int)m.Role == role.Value);
         if (status.HasValue) baseFilter = baseFilter.Where(m => (int)m.Status == status.Value);
+        // X-5 数据范围过滤：组织 Id 集 / 仅本人（由 Bas 消费方按角色 DefaultDataScope 展开传入）
+        if (orgIds is not null) baseFilter = baseFilter.Where(m => m.OrgId.HasValue && orgIds.Contains(m.OrgId.Value));
+        if (onlyMemberId.HasValue) baseFilter = baseFilter.Where(m => m.Id == onlyMemberId.Value);
 
         IQueryable<TenantMember> countQuery = baseFilter;
         IQueryable<TenantMember> listQuery = baseFilter;

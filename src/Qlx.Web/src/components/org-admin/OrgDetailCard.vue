@@ -1,38 +1,57 @@
 <!--
   所属公司：四川淇利馨集团有限公司
-  描述：组织详情卡——描述列表 + 下级组织 chips + 编辑 / 启停操作
-  说明：受控展示组件；负责人名 / 上级名经 props 注入（页面用候选清单解析），
-        停用 / 启用的确认框由页面触发（组件只 emit 意图）
+  描述：组织详情卡（Bas 主数据版）——编码 / 四级类型 / 负责人 / 有效期 / 版本 / 审批状态 + 下级 chips
+  说明：
+    1. 受控展示组件；负责人名 / 上级名经 props 注入（页面用人员候选清单解析）；
+    2. 类型 / 状态一律数值，中文映射与图标取自 org-admin-utils（B-4）；
+    3. 停用 / 启用、版本历史、审批进度仅 emit 意图，确认框与请求由页面处理。
 -->
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import QlxDescriptionList from '@/components/crud/QlxDescriptionList.vue'
 import type { DescriptionItem } from '@/components/crud/QlxDescriptionList.vue'
-import { entityStatusLabels, entityStatusTones, orgTypeIcons, orgTypeLabels } from '@/types/tenant'
+import type { TagTone } from '@/components/crud/QlxDataTable.vue'
 import { formatDateTime } from '@/utils/format'
-import type { OrgTreeNode } from './org-admin-utils'
+import { formatEffectPeriod } from '@/utils/bas-master-mappers'
+import type { ApprovalInstanceLite } from '@/utils/bas-master-mappers'
+import { APPROVAL_STATUS_LABELS, APPROVAL_STATUS_TYPE } from '@/types/support'
+import {
+  basOrgStatusLabel,
+  basOrgStatusTone,
+  basOrgTypeIcon,
+  basOrgTypeLabel,
+  isBasOrgDisabled,
+} from './org-admin-utils'
+import type { BasOrgTreeNode } from './org-admin-utils'
 
 const props = withDefaults(
   defineProps<{
-    node: OrgTreeNode | null
-    /** 上级组织显示名（根节点页面传「无（公司根节点）」）。 */
+    node: BasOrgTreeNode | null
+    /** 上级组织显示名（根节点页面传「无（集团根节点）」）。 */
     parentName?: string
-    /** 负责人显示名（页面用负责人候选清单解析 managerMemberId）。 */
-    managerName?: string
+    /** 负责人显示名（页面用人员候选清单解析 leaderPersonId）。 */
+    leaderName?: string
+    /** 最近一次组织调整审批实例（按 bizId 从发起的审批列表归并，刷新后仍可见）。 */
+    approvalState?: ApprovalInstanceLite | null
   }>(),
-  { parentName: '—', managerName: '' },
+  { parentName: '—', leaderName: '', approvalState: null },
 )
 
 const emit = defineEmits<{
   edit: []
   toggle: []
+  history: []
   'select-child': [id: string]
+  'submit-disable-approval': []
+  'view-approval': []
 }>()
 
-/** 根公司启用态下不可停用（后端 409 同规则，前端先行禁用）。 */
+/** 根节点启用态下不可停用（后端 409 同规则，前端先行禁用）。 */
 const toggleDisabled = computed(
-  () => props.node !== null && props.node.parentId === null && props.node.status === 'Enabled',
+  () => props.node !== null
+    && props.node.parentId === null
+    && !isBasOrgDisabled(props.node.status),
 )
 
 const items = computed<DescriptionItem[]>(() => {
@@ -41,15 +60,32 @@ const items = computed<DescriptionItem[]>(() => {
     return []
   }
   return [
-    { label: '组织名称', value: node.name },
-    { label: '组织类型', value: orgTypeLabels[node.type] },
+    { label: '组织编码', value: node.code },
+    { label: '组织类型', value: basOrgTypeLabel(node.type) },
     { label: '上级组织', value: props.parentName },
-    { label: '负责人', value: props.managerName || '未指定' },
-    { label: '直属成员', value: `${node.memberCount} 人` },
-    { label: '状态', value: entityStatusLabels[node.status] },
+    { label: '负责人', value: props.leaderName || '未指定' },
+    { label: '有效期', value: formatEffectPeriod(node.effectDate, node.expiryDate) },
+    { label: '数据版本', value: `v${node.version}` },
     { label: '排序号', value: String(node.sortOrder) },
-    { label: '创建时间', value: formatDateTime(node.createdAt) },
+    { label: '更新时间', value: formatDateTime(node.updatedAt) },
   ]
+})
+
+/** 审批状态中文 / 色调（复用全局 ApprovalStatusCode 映射表，不重复造字典）。 */
+const approvalStatusLabel = computed<string>(() => {
+  const status = props.approvalState?.status
+  if (status === undefined) {
+    return ''
+  }
+  return (APPROVAL_STATUS_LABELS as Record<number, string>)[status] ?? '—'
+})
+
+const approvalStatusTone = computed<TagTone>(() => {
+  const status = props.approvalState?.status
+  if (status === undefined) {
+    return 'info'
+  }
+  return ((APPROVAL_STATUS_TYPE as Record<number, string>)[status] ?? 'info') as TagTone
 })
 </script>
 
@@ -58,30 +94,58 @@ const items = computed<DescriptionItem[]>(() => {
     <header class="org-detail__head">
       <div class="org-detail__titles">
         <h2>{{ node.name }}</h2>
-        <p>{{ orgTypeLabels[node.type] }} · {{ parentName }}</p>
+        <p>
+          <AppIcon :name="basOrgTypeIcon(node.type)" :size="13" />
+          {{ basOrgTypeLabel(node.type) }} · {{ parentName }}
+          <span class="qlx-numeric">· {{ node.code }}</span>
+        </p>
       </div>
       <div class="org-detail__actions">
-        <el-tag :type="entityStatusTones[node.status]" size="small" effect="light">
-          {{ entityStatusLabels[node.status] }}
+        <el-tag :type="basOrgStatusTone(node.status)" size="small" effect="light">
+          {{ basOrgStatusLabel(node.status) }}
         </el-tag>
         <el-button v-permission="'bas.admin.org.action'" size="small" @click="emit('edit')">
           编辑
         </el-button>
+        <el-button v-permission="'bas.admin.org.action'" size="small" plain @click="emit('history')">
+          版本历史
+        </el-button>
         <el-button
           v-permission="'bas.admin.org.action'"
           size="small"
-          :type="node.status === 'Enabled' ? 'danger' : 'primary'"
+          plain
+          @click="emit('submit-disable-approval')"
+        >
+          调整审批
+        </el-button>
+        <el-button
+          v-permission="'bas.admin.org.action'"
+          size="small"
+          :type="node.status === 1 ? 'danger' : 'primary'"
           plain
           :disabled="toggleDisabled"
-          :title="toggleDisabled ? '公司根节点不可停用' : undefined"
+          :title="toggleDisabled ? '集团根节点不可停用' : undefined"
           @click="emit('toggle')"
         >
-          {{ node.status === 'Enabled' ? '停用' : '启用' }}
+          {{ node.status === 1 ? '停用' : '启用' }}
         </el-button>
       </div>
     </header>
 
     <QlxDescriptionList :items="items" :column="3" />
+
+    <div v-if="approvalState" class="org-detail__approval">
+      <span class="org-detail__approval-label">调整审批</span>
+      <el-tag :type="approvalStatusTone" size="small" effect="light">
+        {{ approvalStatusLabel }}
+      </el-tag>
+      <span class="org-detail__approval-meta">
+        申请时间 {{ formatDateTime(approvalState.startedAt) }}
+      </span>
+      <el-button size="small" text type="primary" @click="emit('view-approval')">
+        查看审批进度
+      </el-button>
+    </div>
 
     <div class="org-detail__children">
       <h3>下级组织（{{ node.children.length }}）</h3>
@@ -91,12 +155,12 @@ const items = computed<DescriptionItem[]>(() => {
           :key="child.id"
           type="button"
           class="org-chip"
-          :class="{ 'is-off': child.status === 'Disabled' }"
+          :class="{ 'is-off': isBasOrgDisabled(child.status) }"
           @click="emit('select-child', child.id)"
         >
-          <AppIcon :name="orgTypeIcons[child.type]" :size="13" />
+          <AppIcon :name="basOrgTypeIcon(child.type)" :size="13" />
           {{ child.name }}
-          <em class="qlx-numeric">{{ child.memberCount }}</em>
+          <em class="qlx-numeric">{{ child.code }}</em>
         </button>
       </div>
       <p v-else class="org-detail__empty">暂无下级组织，可通过「新增下级组织」细分团队。</p>
@@ -144,7 +208,10 @@ const items = computed<DescriptionItem[]>(() => {
 }
 
 .org-detail__titles p {
+  display: flex;
   margin-top: 2px;
+  align-items: center;
+  gap: 4px;
   color: var(--qlx-ink-400);
   font-size: var(--qlx-text-xs);
 }
@@ -152,8 +219,29 @@ const items = computed<DescriptionItem[]>(() => {
 .org-detail__actions {
   display: flex;
   flex: 0 0 auto;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--qlx-space-2);
+}
+
+.org-detail__approval {
+  display: flex;
+  margin-top: var(--qlx-space-3);
+  padding: var(--qlx-space-2) var(--qlx-space-3);
+  border-left: 3px solid var(--qlx-gold-500);
+  background: var(--qlx-canvas);
+  align-items: center;
+  gap: var(--qlx-space-2);
+}
+
+.org-detail__approval-label {
+  color: var(--qlx-ink-600);
+  font-size: var(--qlx-text-sm);
+}
+
+.org-detail__approval-meta {
+  color: var(--qlx-ink-400);
+  font-size: var(--qlx-text-xs);
 }
 
 .org-detail__children {

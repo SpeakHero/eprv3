@@ -1,11 +1,11 @@
 {
   "Qlx": {
     "Cache": {
-      "_comment": "默认 Redis（本机 localhost:6379 无凭据，非密钥可明文）；生产环境连接串含凭据时必须走密钥引用注入，禁止明文入库",
+      "_comment": "本机 Redis 已启用 requirepass（渗透整改 V-01）；生产环境连接串必须走密钥引用注入，禁止明文入库",
       "Provider": "Redis",
       "InstanceName": "qlx",
       "DefaultExpirationSeconds": 1800,
-      "RedisConnectionString": "localhost:6379,abortConnect=false"
+      "RedisConnectionString": "localhost:6379,password=QlxRedis_ZoVuMb4Fg2omoEpQIerGliCXh0YEbEj,abortConnect=false"
     }
   }
 }

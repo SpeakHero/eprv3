@@ -78,16 +78,6 @@ public static class QlxAuthConstants
         public const string LoginAccount = QlxClaimConstants.LoginAccount;
     }
 
-    /// <summary>登录安全缓存键前缀（密码失败计数 / 账号锁定标记）。</summary>
-    public static class AuthCacheKeys
-    {
-        /// <summary>密码失败计数键前缀（auth:pwfail:{loginAccount}）。</summary>
-        public const string PasswordFailPrefix = "auth:pwfail:";
-
-        /// <summary>账号锁定标记键前缀（auth:lockout:{loginAccount}）。</summary>
-        public const string LockoutPrefix = "auth:lockout:";
-    }
-
     /// <summary>token_kind 取值。</summary>
     public static class TokenKinds
     {

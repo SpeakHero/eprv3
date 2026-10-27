@@ -113,8 +113,6 @@ internal sealed class TenantMemberAdmin(
 
         var user = await db.Set<PortalUser>().FindAsync([member.PortalUserId], ct) ?? throw new NotFoundException(PortalConstants.ResourceNames.PortalUserEntity, $"{member.PortalUserId}");
 
-        if (member.Role == TenantMemberRole.PendingInvite)
-            throw new ConflictException("待邀请成员尚未设置密码，请重发邀请", PortalConstants.ErrorCodes.PendingInviteNoPassword);
         if (member.Status == MemberStatus.Disabled)
             throw new ConflictException("成员已停用，请先启用后再重置密码", PortalConstants.ErrorCodes.MemberDisabled);
 

@@ -140,6 +140,9 @@ public static class PortalConstants
         /// <summary>重置门户用户密码。</summary>
         public const string ResetUserPassword = "RESET_USER_PASSWORD";
 
+        /// <summary>成员首登激活（接受邀请：PendingInvite → OrdinaryMember）。</summary>
+        public const string MemberActivate = "MEMBER_ACTIVATE";
+
         /// <summary>发起共享库升级独立库。</summary>
         public const string PromoteToIsolated = "PROMOTE_TO_ISOLATED";
 
@@ -293,6 +296,21 @@ public static class PortalConstants
 
         /// <summary>许可记录查询上限。</summary>
         public const int MaxLicenseRecordTake = 500;
+
+        /// <summary>许可变更备注最大长度（对齐 LicenseRecord.Remark 列宽）。</summary>
+        public const int MaxLicenseRemarkLength = 512;
+
+        /// <summary>会员等级字面量校验模式（精确大小写，与 <see cref="MemberLevels"/> 一致）。</summary>
+        public const string MemberLevelPattern = "^(Trial|Standard|Professional|Flagship)$";
+
+        /// <summary>数据库模式字面量校验模式（可选：空串 / 缺省表示走配置默认）。</summary>
+        public const string DatabaseModePattern = "^(Shared|Isolated)?$";
+
+        /// <summary>租户列表状态过滤字面量校验模式（可选：空串 / 缺省表示全部）。</summary>
+        public const string TenantStatusFilterPattern = "^(Enabled|Disabled|Pending|ProvisioningFailed|Expired)?$";
+
+        /// <summary>门户用户状态过滤字面量校验模式（可选：空串 / 缺省表示全部）。</summary>
+        public const string UserStatusFilterPattern = "^(Enabled|Disabled)?$";
 
         /// <summary>密码历史查询上限。</summary>
         public const int MaxPasswordHistoryTake = 100;

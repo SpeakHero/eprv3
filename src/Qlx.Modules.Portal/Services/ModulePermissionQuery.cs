@@ -40,14 +40,14 @@ internal sealed class ModulePermissionQuery(
             .Select(m => new { m.ModuleCode, m.DisplayName, m.Description, m.CurrentVersion })
             .ToListAsync(cancellationToken);
 
-        return modules.Select(m => new ModuleDefinitionRow(
+        return [.. modules.Select(m => new ModuleDefinitionRow(
             m.ModuleCode,
             m.DisplayName,
             m.Description,
             null,
             m.CurrentVersion,
             permsByModule.FirstOrDefault(g => g.Key == m.ModuleCode)?.ToList() ?? [])
-        ).ToList();
+        )];
     }
 
     public async Task<IReadOnlyList<TenantModuleCardRow>> ListTenantModulesAsync(
@@ -72,7 +72,7 @@ internal sealed class ModulePermissionQuery(
             })
             .ToListAsync(cancellationToken);
 
-        return raw
+        return [.. raw
             .OrderBy(r => r.ModuleCode, StringComparer.Ordinal)
             .Select(r => new TenantModuleCardRow(
                 r.ModuleCode,
@@ -81,7 +81,6 @@ internal sealed class ModulePermissionQuery(
                 null,
                 r.LicensedVersion,
                 r.Enabled,
-                r.LicensedAt))
-            .ToList();
+                r.LicensedAt))];
     }
 }

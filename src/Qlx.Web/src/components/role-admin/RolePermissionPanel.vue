@@ -56,7 +56,8 @@ async function syncChecked(): Promise<void> {
 watch(() => [props.groups, props.checked] as const, syncChecked, { immediate: true, deep: true })
 
 function readChecked(): string[] {
-  return extractCheckedCodes(treeRef.value?.getCheckedKeys(false) ?? [])
+  // 仅取叶子节点：父节点（module: 前缀）勾选时由 el-tree 级联到叶子，避免只勾父节点导致权限码为空
+  return extractCheckedCodes(treeRef.value?.getCheckedKeys(true) ?? [])
 }
 
 function onCheck(): void {

@@ -6,6 +6,8 @@
     <Project Path="src/Qlx.Modules.Portal/Qlx.Modules.Portal.csproj" />
     <Project Path="src/Qlx.Modules.Bas/Qlx.Modules.Bas.csproj" />
     <Project Path="src/Qlx.Modules.Support/Qlx.Modules.Support.csproj" />
+    <Project Path="src/Qlx.Modules.Wms/Qlx.Modules.Wms.csproj" />
+    <Project Path="src/Qlx.Modules.Stk/Qlx.Modules.Stk.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Qlx.BuildingBlocks.Tests/Qlx.BuildingBlocks.Tests.csproj" />

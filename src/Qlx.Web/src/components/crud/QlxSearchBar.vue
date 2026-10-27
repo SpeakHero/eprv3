@@ -14,7 +14,8 @@ export interface SearchFieldOption {
 export interface SearchField {
   prop: string
   label: string
-  type: 'input' | 'select'
+  /** date 型输出 'YYYY-MM-DD' 字符串（时间区间筛选用两个字段表示起止）。 */
+  type: 'input' | 'select' | 'date'
   placeholder?: string
   options?: SearchFieldOption[]
   /** 输入框宽度（默认 220px）。 */
@@ -69,6 +70,15 @@ function reset(): void {
           :value="option.value"
         />
       </el-select>
+      <el-date-picker
+        v-else-if="field.type === 'date'"
+        v-model="form[field.prop]"
+        type="date"
+        value-format="YYYY-MM-DD"
+        :placeholder="field.placeholder ?? '选择日期'"
+        clearable
+        :style="{ width: `${field.width ?? 160}px` }"
+      />
       <el-input
         v-else
         v-model="form[field.prop]"

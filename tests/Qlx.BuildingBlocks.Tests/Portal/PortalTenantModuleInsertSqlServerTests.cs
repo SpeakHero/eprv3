@@ -87,7 +87,7 @@ public sealed class PortalTenantModuleInsertSqlServerTests
                     .ToArrayAsync(TestContext.Current.CancellationToken);
 
                 Assert.Equal(2, modules.Length);
-                Assert.Equal(["bas", "support"], modules.Select(m => m.ModuleCode).ToArray());
+                Assert.Equal(["bas", "support"], [.. modules.Select(m => m.ModuleCode)]);
                 Assert.All(modules, m => Assert.NotEqual(0, m.Id));
             }
         }

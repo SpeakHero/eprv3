@@ -74,8 +74,7 @@ public sealed class CacheGuardArchitectureTests
     }
 
     private static string[] EnumerateModuleNames()
-        => Directory
+        => [.. Directory
             .EnumerateFiles(AppContext.BaseDirectory, "Qlx.Modules.*.dll", SearchOption.TopDirectoryOnly)
-            .Select(static file => Path.GetFileNameWithoutExtension(file))
-            .ToArray();
+            .Select(static file => Path.GetFileNameWithoutExtension(file))];
 }

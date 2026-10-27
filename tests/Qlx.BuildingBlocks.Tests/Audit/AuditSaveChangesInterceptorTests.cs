@@ -168,6 +168,8 @@ public sealed class AuditSaveChangesInterceptorTests
 
         public string? UserDisplayName => UserName;
 
+        public string? CurrentUserIp => null;
+
         public bool IsAuthenticated => UserName is not null;
     }
 }

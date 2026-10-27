@@ -35,6 +35,8 @@
     <ProjectReference Include="..\..\src\Qlx.Modules.Portal\Qlx.Modules.Portal.csproj" />
     <ProjectReference Include="..\..\src\Qlx.Modules.Bas\Qlx.Modules.Bas.csproj" />
     <ProjectReference Include="..\..\src\Qlx.Modules.Support\Qlx.Modules.Support.csproj" />
+    <ProjectReference Include="..\..\src\Qlx.Modules.Wms\Qlx.Modules.Wms.csproj" />
+    <ProjectReference Include="..\..\src\Qlx.Modules.Stk\Qlx.Modules.Stk.csproj" />
   </ItemGroup>
 
 </Project>

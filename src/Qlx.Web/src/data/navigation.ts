@@ -66,18 +66,16 @@ export const navModules: NavModule[] = [
     groups: [
       {
         name: '商品档案',
-        items: [
-          { code: 'product', name: '商品档案', icon: 'Goods' },
-          { code: 'spec', name: '商品规格', icon: 'Box' },
-          { code: 'image', name: '商品图片', icon: 'Picture' },
-        ],
+        items: [{ code: 'item', name: '商品档案', icon: 'Goods' }],
       },
       {
         name: '库存管理',
         items: [
+          { code: 'opening', name: '期初建账', icon: 'Money' },
           { code: 'ledger', name: '库存台账', icon: 'Notebook' },
-          { code: 'transaction', name: '出入库流水', icon: 'Tickets' },
-          { code: 'alert', name: '库存预警', icon: 'Warning' },
+          { code: 'txn', name: '出入库流水', icon: 'Tickets' },
+          { code: 'costadjust', name: '成本调整', icon: 'EditPen' },
+          { code: 'batch', name: '批次库存', icon: 'Box' },
         ],
       },
     ],
@@ -142,12 +140,19 @@ export const navModules: NavModule[] = [
         ],
       },
       {
-        name: '出入库',
+        name: '出入库作业',
         items: [
-          { code: 'receipt', name: '收货单', icon: 'Van' },
-          { code: 'issue', name: '发货单', icon: 'Van' },
-          { code: 'transfer', name: '内部调拨', icon: 'Switch' },
-          { code: 'check', name: '库存盘点', icon: 'List' },
+          { code: 'inbound', name: '入库作业', icon: 'Van' },
+          { code: 'outbound', name: '出库作业', icon: 'Van' },
+          { code: 'transfers', name: '物资调拨', icon: 'Switch' },
+        ],
+      },
+      {
+        name: '盘点与预警',
+        items: [
+          { code: 'stocktakes', name: '库存盘点', icon: 'List' },
+          { code: 'adjustments', name: '盘盈盘亏', icon: 'EditPen' },
+          { code: 'alerts', name: '库存预警', icon: 'Bell' },
         ],
       },
     ],

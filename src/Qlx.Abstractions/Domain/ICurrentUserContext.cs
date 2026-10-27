@@ -23,6 +23,8 @@ public interface ICurrentUserContext
 
     /// <summary>当前用户显示名称，未认证为 null。</summary>
     string? UserDisplayName { get; }
+    /// <summary>获取当前用户IP。</summary>
+    string? CurrentUserIp { get;}
 
     /// <summary>当前请求是否来自匿名用户。</summary>
     bool IsAuthenticated { get; }

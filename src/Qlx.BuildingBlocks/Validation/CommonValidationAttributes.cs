@@ -81,3 +81,11 @@ public sealed class UrlFormatAttribute() : RegexValidationAttribute("字段 {0} 
     /// <inheritdoc />
     protected override Regex Pattern => CommonValidationPatterns.Url;
 }
+
+/// <summary>统一社会信用代码（USCC）格式校验（18 位大写字母或数字）。</summary>
+[AttributeUsage(AttributeTargets.Property | AttributeTargets.Parameter | AttributeTargets.Field)]
+public sealed class CnUsccAttribute() : RegexValidationAttribute("字段 {0} 不是有效的统一社会信用代码（须为 18 位大写字母或数字）")
+{
+    /// <inheritdoc />
+    protected override Regex Pattern => CommonValidationPatterns.CnUscc;
+}

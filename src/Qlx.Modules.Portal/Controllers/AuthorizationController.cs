@@ -3,7 +3,7 @@
  * 作者：SpeakHero（491960352@qq.com）
  * 版本：1.0.0 beta
  * 创建时间：2026-10-21 06:30:00 +08:00 中国标准时间 星期三
- * 修改时间：2026-10-22 21:10:00 +08:00 中国标准时间 星期四
+ * 修改时间：2026-10-26
  * 描述：OpenIddict Token 端点控制器：仅做 grant_type 分发、HTTP 参数提取与响应封装，业务逻辑由 IPortalAuthenticationService 承载
  */
 
@@ -15,6 +15,7 @@ using OpenIddict.Abstractions;
 using OpenIddict.Server;
 using OpenIddict.Server.AspNetCore;
 using OpenIddict.Validation.AspNetCore;
+using Qlx.Abstractions.Domain;
 using Qlx.Modules.Portal.Auth;
 using Qlx.Modules.Portal.Services;
 
@@ -36,10 +37,12 @@ namespace Qlx.Modules.Portal.Controllers;
 /// 全部由 <see cref="IPortalAuthenticationService"/> 承载。</para>
 /// </summary>
 [ApiController]
-public sealed class AuthorizationController(IPortalAuthenticationService authenticationService) : ControllerBase
+public sealed class AuthorizationController(
+    IPortalAuthenticationService authenticationService,
+    IUserIpAddressProvider userIpAddressProvider) : ControllerBase
 {
-    /// <summary>客户端来源 IP（审计扩展信息，代理场景取连接远端地址）。</summary>
-    private string ClientIpAddress => HttpContext.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+    /// <summary>客户端来源 IP（审计扩展信息）。统一经 <see cref="IUserIpAddressProvider"/> 解析，不直接读连接远端地址。</summary>
+    private string ClientIpAddress => userIpAddressProvider.GetCurrentUserIp() ?? string.Empty;
 
     /// <summary>
     /// /connect/token：按 grant_type 分发到对应阶段处理器。

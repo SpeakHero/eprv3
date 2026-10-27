@@ -1,0 +1,137 @@
+{
+  "steps": {
+    "org_create": {
+      "ok": true,
+      "message": "组织已创建",
+      "has_code_input": false,
+      "code_hint": "上级组织不能选择自身或下级组织",
+      "created_code": "ORG-BM-01",
+      "detail_has_approval_state": false
+    },
+    "org_history": {
+      "ok": true,
+      "text": "组织版本历史 · 自动化验证部180626\n2026-10-25 18:06\nv1\n变更人：aPV0jVYgxx0w\n名称\n自动化验证部180626\n类型\n部门\n状态\n启用\n上级\n无（根节点）"
+    },
+    "category_create": {
+      "ok": true,
+      "messages": [
+        "分类已创建",
+        "分类已创建"
+      ],
+      "parent_code_guess": "01",
+      "body_excerpt": "分类树\n2 个节点\n自动化验证分类180626\n01\n自动化验证子分类180626\n0101\n新增顶级分类\n自动化验证子分类180626\n\n0101 · 第 2 级\n\n启用\n新增子分类\n编辑\n停用审批\n停用\n分类编码\t0101\t层级\t第 2 级\n上级分类\t自动化验证分类180626\t默认单位组\t未指定\n状态\t启用\t更新时间\t2026-10-25 18:06\n下级分类（0）\n\n暂无下级分类。\n\n分类编码按层级连续生成（父编码 + 序号），创建后不可修改；停用不影响历史单据引用。\n\n四川淇利馨集团有限公司\n|\n服务热线 0830-0000000\n|\n工作日 08:30–18:00\n平台版本 v0.1.0\n|\n川 ICP 备 2026000000 号\n|\n建议使用 Chrome / Edge 浏览器\n\n分类已创建"
+    },
+    "units_page": {
+      "ok": true,
+      "tabs": {
+        "单位组": true,
+        "计量单位": true,
+        "换算关系": true
+      },
+      "no_code_input": true
+    },
+    "supplier_create": {
+      "ok": true,
+      "message": "供应商已创建",
+      "no_code_input": true,
+      "code": "SUP-000001"
+    },
+    "supplier_admission": {
+      "ok": false,
+      "message": "供应商已创建"
+    },
+    "approval": {
+      "ok": false,
+      "approvals_done": 0,
+      "todo_text_excerpt": "淇\n淇利馨集团\nQILIXIN GROUP · 数智经营管理平台\n工作台\n基础资料\n系\n系统管理员\n淇利馨 ERP 开发租户 · 企业管理员\n\n工作台\n\n组织机构\n成员管理\n角色权限\n商品分类\n计量单位\n供应商管理\n客户管理\n人员主数据\n数据字典\n编码规则\n变更日志\n职责边界\n组织、成员、角色与业务数据\n租户内成员启停与权限分配\n模块启停由门户许可控制\n自然人全局停用由门户控制\n\n以上边界依据《SaaS 架构规范》5.1 租户自管理域。\n\n工作台\n/\n企业管理\n/\n审批中心\n审批中心\n\n待办 / 已办 / 我发起的 / 委托管理——审批动作统一经 /api/support/approvals 提交，操作人身份由服务端取当前登录人\n\n待办\n已办\n我发起的\n委托管理\n新建委托\n审批节点\n\t\n实例号\n\t\n状态\n\t\n到达时间\n\t\n操作\n暂无数据\n四川淇利馨集团有限公司\n|\n服务热线 0830-0000000\n|\n工作日 08:30–18:00\n平台版本 v0.1.0\n|\n川 ICP 备 2026000000 号\n|\n建议使用 Chrome / Edge 浏览器",
+      "errors": []
+    },
+    "supplier_active": {
+      "ok": false,
+      "has_row": true,
+      "status_text": "未变为合作中"
+    },
+    "person_create": {
+      "ok": false,
+      "message": "请求数据校验失败",
+      "no_code_input": true,
+      "masked_id": null,
+      "masked_mobile": null,
+      "has_plaintext_button": false,
+      "has_leave_button": false
+    },
+    "dict_sub": {
+      "ok": false,
+      "error": "Locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for get_by_text(\"自动化验证字典180626\", exact=True).first\n",
+      "trace": "Traceback (most recent call last):\n  File \"e:\\ERPv2\\eprv3\\docs\\test-shots\\bas-20261025\\_scripts\\main_path.py\", line 369, in <module>\n    page.get_by_text(f\"自动化验证字典{TS}\", exact=True).first.click()\n    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^\n  File \"C:\\Python314\\Lib\\site-packages\\playwright\\sync_api\\_generated.py\", line 18032, in click\n    self._sync(\n    ~~~~~~~~~~^\n        self._impl_obj.click(\n        ^^^^^^^^^^^^^^^^^^^^^\n    ...<11 lines>...\n        )\n        ^\n    )\n    ^\n  File \"C:\\Python314\\Lib\\site-packages\\playwright\\_impl\\_sync_base.py\", line 115, in _sync\n    return task.result()\n           ~~~~~~~~~~~^^\nplaywright._impl._errors.TimeoutError: Locator.click: Timeout 30000ms exceeded.\nCall log:\n  - waiting for get_by_text(\"自动化验证字典180626\", exact=True).first\n\n"
+    },
+    "customer": {
+      "ok": true,
+      "message": "客户已创建",
+      "has_credit_action": true,
+      "detail_tabs": {
+        "信用额度": true,
+        "回款账户": true,
+        "开票信息": true,
+        "信用历史": true
+      }
+    },
+    "changelog": {
+      "ok": true,
+      "has_empty": false,
+      "rows_text": "变更日志\n职责边界\n组织、成员、角色与业务数据\n租户内成员启停与权限分配\n模块启停由门户许可控制\n自然人全局停用由门户控制\n\n以上边界依据《SaaS 架构规范》5.1 租户自管理域。\n\n工作台\n/\n企业管理\n/\n变更日志\n变更日志\n\n主数据审计流水 · 对象类型 / 操作人 / 时间区间筛选（规范 5.2.6）\n\n刷新\n对象类型\n全部\n操作人\n开始日期\n结束日期\n查询\n重置\n变更时间\n\t\n对象类型\n\t\n操作\n\t\n对象 Id\n\t\n操作人\n\t\n操作\n2026-10-25 18:07\n\t\n客户\n\t\n新增\n\t\nnjM5PvKe\n\t\naPV0jVYgxx0w\n\t\n变更详情\n\n\n2026-10-25 18:06\n\t\n供应商\n\t\n新增\n\t\nnjM5PvKe\n\t\naPV0jVYgxx0w\n\t\n变更详情\n\n\n2026-10-25 18:06\n\t\n商品分类\n\t\n新增\n\t\ndxNe8MAJ\n\t\naPV0jVYgxx0w\n\t\n变更详情\n\n\n2026-10-25 18:06\n\t\n商品分类\n\t\n新增\n\t\nnjM5PvKe\n\t\naPV0jVYgxx0w\n\t\n变更详情\n\n\n2026-10-25 18:06\n\t\n组织机构\n\t\n新增\n\t\nxNeZm5OA\n\t\naPV0jVYgxx0w\n\t\n变更详情\n共 5 条\n10条/页\n1\n前往\n页\n四川淇利馨集团有限公司\n|\n服务热线 0830-0000000\n|\n工作日 08:30–18:00\n平台版本 v0.1.0\n|\n川 ICP 备 2026000000 号\n|\n建议使用 Chrome / Edge 浏览器"
+    },
+    "approvals_page": {
+      "ok": true
+    }
+  },
+  "messages": [
+    "组织已创建",
+    "分类已创建",
+    "分类已创建",
+    "供应商已创建",
+    "供应商已创建",
+    "请求数据校验失败",
+    "字典类型已创建",
+    "客户已创建"
+  ],
+  "screenshots": [
+    "11-org-form.png",
+    "12-org-created.png",
+    "13-org-history.png",
+    "14-category-form.png",
+    "15-category-created.png",
+    "16-unit-form.png",
+    "17-supplier-form.png",
+    "18-supplier-created.png",
+    "19-supplier-admission-prompt.png",
+    "19b-supplier-after-admission.png",
+    "20-approval-todos.png",
+    "21-approval-done.png",
+    "22-supplier-active.png",
+    "23-person-form.png",
+    "24-person-created.png",
+    "25-dict-type-form.png",
+    "29-customer-form.png",
+    "30-customer-created.png",
+    "31-customer-detail-tabs.png",
+    "32-changelog-after.png",
+    "33-approval-initiated.png"
+  ],
+  "login_url": "http://localhost:5173/workbench",
+  "console": [
+    {
+      "type": "error",
+      "text": "Failed to load resource: the server responded with a status of 422 (Unprocessable Entity)",
+      "page": "http://localhost:5173/manage/master/persons"
+    }
+  ],
+  "page_errors": [],
+  "failed_requests": [
+    {
+      "status": 422,
+      "url": "http://localhost:5173/api/bas/persons",
+      "method": "POST"
+    }
+  ]
+}

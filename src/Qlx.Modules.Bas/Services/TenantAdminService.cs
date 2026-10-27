@@ -29,7 +29,7 @@ namespace Qlx.Modules.Bas.Services;
 /// 路由 / 查询 / JSON 属性中的业务 Id 已由收发边界（ModelBinder / JSON 约定）解码为真实 long；
 /// 仅请求体顶层数组（无属性元数据）在 Service 内统一解码。
 /// </summary>
-internal sealed class TenantAdminService(
+internal sealed partial class TenantAdminService(
     ITenantContext tenantCtx,
     IBasTenantRepository repo,
     ITenantMemberQuery memberQuery,
@@ -37,7 +37,10 @@ internal sealed class TenantAdminService(
     IModulePermissionQuery permissionQuery,
     IIdObfuscator obfuscator,
     IMessageService messageService,
-    IEncodingGenerator encodingGenerator) : ITenantAdminService
+    IEncodingGenerator encodingGenerator,
+    ICurrentMemberDataScopeResolver dataScopeResolver,
+    Services.Numbering.IBasCodeNumberGenerator codeNumberGenerator,
+    Qlx.BuildingBlocks.Caching.ICacheService cache) : ITenantAdminService
 {
     private long TenantId => tenantCtx.TenantId
         ?? throw new ForbiddenException("未识别到租户上下文");
@@ -48,7 +51,18 @@ internal sealed class TenantAdminService(
     {
         IReadOnlyList<Organization> orgs = await repo.ListAllOrgsAsync(ct);
 
-        // 直属成员计数：成员在 Portal 库（跨库禁 Join），一次查询全量成员后内存分组计数（禁 N+1）
+        // X-5 数据范围过滤：组织列表收敛至当前成员可见范围（Self/Dept → 本部门；DeptAndChildren → 子树）
+        var scopeCtx = await dataScopeResolver.ResolveAsync(ct);
+        if (scopeCtx is not null && scopeCtx.Scope != DataScope.All)
+        {
+            IReadOnlyCollection<long> allowedOrgIds = scopeCtx.Scope == DataScope.DeptAndChildren
+                ? (scopeCtx.OrgId.HasValue ? ExpandSubtreeOrgIds(orgs, scopeCtx.OrgId.Value) : [])
+                : (scopeCtx.OrgId.HasValue ? [scopeCtx.OrgId.Value] : []);
+            orgs = [.. orgs.Where(o => allowedOrgIds.Contains(o.Id))];
+        }
+
+        // 直属成员计数：成员在 Portal 库（跨库禁 Join），一次查询全量成员后内存分组计数（禁 N+1）,
+        //企业应用用户不大，暂时不用担心拉爆内存问题，后期量大将分页
         IReadOnlyList<TenantMemberSummaryRow> members = await memberQuery.ListAllMembersAsync(TenantId, ct);
         Dictionary<long, int> memberCountByOrg = members
             .Where(m => m.OrgId.HasValue)
@@ -56,6 +70,30 @@ internal sealed class TenantAdminService(
             .ToDictionary(g => g.Key, g => g.Count());
 
         return [.. orgs.Select(o => MapOrg(o, memberCountByOrg.GetValueOrDefault(o.Id)))];
+    }
+
+    /// <summary>展开组织子树 Id 集（含自身）：基于已加载的全量组织内存建树，禁 N+1。</summary>
+    private static List<long> ExpandSubtreeOrgIds(IReadOnlyList<Organization> allOrgs, long rootOrgId)
+    {
+        var childrenByParent = allOrgs
+            .Where(o => o.ParentId.HasValue)
+            .GroupBy(o => o.ParentId!.Value)
+            .ToDictionary(g => g.Key, g => g.Select(o => o.Id));
+        var result = new List<long> { rootOrgId };
+        var queue = new Queue<long>([rootOrgId]);
+        while (queue.Count > 0)
+        {
+            if (childrenByParent.TryGetValue(queue.Dequeue(), out var children))
+            {
+                foreach (var childId in children)
+                {
+                    result.Add(childId);
+                    queue.Enqueue(childId);
+                }
+            }
+        }
+
+        return result;
     }
 
     public async Task<OrganizationFlatRow> CreateOrgAsync(SaveOrganizationPayload payload, CancellationToken ct)
@@ -68,12 +106,20 @@ internal sealed class TenantAdminService(
         }
 
         OrgNodeType type = ParseOrgType(payload.Type);
-        Organization org = new(TenantId, payload.Name.Trim(), type, parent?.Id, payload.SortOrder)
-        {
-            ManagerMemberId = payload.ManagerMemberId,
-        };
+        // 组织编码由统一发号器生成（前端不传码，N-1/C-1）
+        string code = await codeNumberGenerator.NextAsync(
+            "org",
+            TenantId,
+            parent?.Code,
+            Services.Numbering.BasCodeRuleDefaults.GetOrgTypeCode(type),
+            isConflict: (candidate, token) => repo.IsOrgCodeExistsAsync(candidate, token),
+            ct: ct).ConfigureAwait(false);
+
+        Organization org = new(TenantId, payload.Name.Trim(), type, parent?.Id, payload.SortOrder, code);
+        org.SetLeader(payload.LeaderPersonId);
         await repo.AddOrgAsync(org, ct);
         _ = await repo.SaveChangesAsync(ct);
+        await InvalidateBasCacheAsync(ct).ConfigureAwait(false);
         return MapOrg(org, 0);
     }
 
@@ -88,31 +134,25 @@ internal sealed class TenantAdminService(
             throw new ConflictException("上级组织不能选择自身", "ORG_PARENT_SELF");
         }
 
-        // 上级不能是自身下级（简化：检查 payload.ParentId 是否在 org 子树中——暂用 HasChildOrgs 粗粒度校验）
-        // 注：完整子树查询需一次 DB 查询；这里先做"父节点不能是本节点的现有下级"的安全校验
-        if (payload.ParentId.HasValue && await repo.HasChildOrgsAsync(id, ct))
+        // 上级不能是自身下级（避免形成环）：一次取全量组织内存展开子树
+        if (payload.ParentId.HasValue)
         {
-            // 简化校验：如果有下级，则不允许变更 ParentId（彻底避免形成环）
-            Organization newParent = await repo.FindOrgAsync(payload.ParentId.Value, ct) ?? throw new NotFoundException("上级组织", PublicId(payload.ParentId.Value));
-            // 不允许把子节点作为父节点——简单方式：父节点必须是 null 或 Level 低于本节点（这里简化为只允许向根或平级移动）
-
-            if (org.ParentId.HasValue && newParent.Id == org.ParentId.Value)
+            _ = await repo.FindOrgAsync(payload.ParentId.Value, ct) ?? throw new NotFoundException("上级组织", PublicId(payload.ParentId.Value));
+            if (ExpandSubtreeOrgIds(await repo.ListAllOrgsAsync(ct), id).Contains(payload.ParentId.Value))
             {
-                // 平级切换（原父节点 → 新父节点）是允许的——这里放行
-            }
-            else if (!org.IsBuiltin && newParent.Id == org.Id)
-            {
-                throw new ConflictException("上级组织不能选择自身", "ORG_PARENT_SELF");
+                throw new ConflictException("上级组织不能选择自身的下级", "ORG_PARENT_CYCLE");
             }
         }
 
-        org.Name = payload.Name.Trim();
-        org.Type = ParseOrgType(payload.Type);
-        org.ParentId = payload.ParentId;
-        org.ManagerMemberId = payload.ManagerMemberId;
+        org.Rename(payload.Name.Trim());
+        org.ChangeType(ParseOrgType(payload.Type));
+        org.ChangeParent(payload.ParentId);
+        org.SetLeader(payload.LeaderPersonId);
         org.SortOrder = payload.SortOrder;
+        org.TouchVersion();
         await repo.UpdateOrgAsync(org, ct);
         _ = await repo.SaveChangesAsync(ct);
+        await InvalidateBasCacheAsync(ct).ConfigureAwait(false);
         return MapOrg(org, await CountOrgMembersAsync(id, ct));
     }
 
@@ -136,10 +176,18 @@ internal sealed class TenantAdminService(
             org.Enable();
         }
 
+        org.TouchVersion();
         await repo.UpdateOrgAsync(org, ct);
         _ = await repo.SaveChangesAsync(ct);
+        await InvalidateBasCacheAsync(ct).ConfigureAwait(false);
         return MapOrg(org, await CountOrgMembersAsync(id, ct));
     }
+
+    /// <summary>按租户 Bas 前缀失效缓存（C-5 失效优先：写路径只删不写）。</summary>
+    private Task<long> InvalidateBasCacheAsync(CancellationToken ct)
+        => cache.RemoveByPrefixAsync(
+            $"{Qlx.BuildingBlocks.Caching.QlxCacheKey.TenantKeyPrefix}:{TenantId}:{Qlx.Abstractions.Constants.QlxModuleCodes.Bas}:",
+            ct);
 
     /// <summary>统计单组织直属成员数（低频管理操作专用；列表场景走 ListAllOrgsAsync 的一次性分组计数）。</summary>
     private async Task<int> CountOrgMembersAsync(long orgId, CancellationToken ct)
@@ -212,12 +260,13 @@ internal sealed class TenantAdminService(
             Position pos = await repo.FindPositionAsync(payload.Id.Value, ct) ?? throw new NotFoundException("岗位", PublicId(payload.Id.Value));
 
             // 岗位编码由系统生成，不允许修改
-            pos.Name = payload.Name.Trim();
-            pos.OrgId = payload.OrgId;
-            pos.Headcount = payload.Headcount;
-            pos.Description = payload.Description;
+            pos.Rename(payload.Name.Trim());
+            pos.ChangeOrg(payload.OrgId);
+            pos.SetHeadcount(payload.Headcount);
+            pos.SetDescriptions(payload.Description, payload.Duty);
             await repo.UpdatePositionAsync(pos, ct);
             _ = await repo.SaveChangesAsync(ct);
+            await InvalidateBasCacheAsync(ct).ConfigureAwait(false);
             return MapPosition(pos);
         }
         else
@@ -236,12 +285,11 @@ internal sealed class TenantAdminService(
                 },
                 cancellationToken: ct).ConfigureAwait(false);
 
-            Position pos = new(TenantId, payload.OrgId, payload.Name.Trim(), code, payload.Headcount)
-            {
-                Description = payload.Description,
-            };
+            Position pos = new(TenantId, payload.OrgId, payload.Name.Trim(), code, payload.Headcount);
+            pos.SetDescriptions(payload.Description, payload.Duty);
             await repo.AddPositionAsync(pos, ct);
             _ = await repo.SaveChangesAsync(ct);
+            await InvalidateBasCacheAsync(ct).ConfigureAwait(false);
             return MapPosition(pos);
         }
     }
@@ -262,6 +310,7 @@ internal sealed class TenantAdminService(
 
         await repo.UpdatePositionAsync(pos, ct);
         _ = await repo.SaveChangesAsync(ct);
+        await InvalidateBasCacheAsync(ct).ConfigureAwait(false);
         return MapPosition(pos);
     }
 
@@ -271,9 +320,45 @@ internal sealed class TenantAdminService(
         long? orgId, int? memberRole, int? memberStatus, string? keyword,
         PagedRequest request, CancellationToken ct)
     {
+        // X-5 数据范围过滤：解析当前成员范围上下文（TenantAdmin/无成员上下文 → null 不过滤）
+        var scopeCtx = await dataScopeResolver.ResolveAsync(ct);
+        IReadOnlyCollection<long>? scopeOrgIds = null;
+        long? onlyMemberId = null;
+        if (scopeCtx is not null && scopeCtx.Scope != DataScope.All)
+        {
+            if (scopeCtx.Scope == DataScope.Self)
+            {
+                onlyMemberId = scopeCtx.MemberId;
+            }
+            else
+            {
+                // Dept / DeptAndChildren（Custom 已在解析器降级为 Dept）
+                if (!scopeCtx.OrgId.HasValue)
+                {
+                    // 成员未挂部门：范围内无任何可见成员
+                    return new PagedResult<MemberRow>([], 0, request.Page, request.PageSize);
+                }
+
+                scopeOrgIds = scopeCtx.Scope == DataScope.DeptAndChildren
+                    ? ExpandSubtreeOrgIds(await repo.ListAllOrgsAsync(ct), scopeCtx.OrgId.Value)
+                    : [scopeCtx.OrgId.Value];
+            }
+        }
+
+        // 显式 orgId 过滤与数据范围求交：越范围直接空页
+        if (orgId.HasValue && scopeOrgIds is not null)
+        {
+            if (!scopeOrgIds.Contains(orgId.Value))
+            {
+                return new PagedResult<MemberRow>([], 0, request.Page, request.PageSize);
+            }
+
+            scopeOrgIds = [orgId.Value];
+        }
+
         (IReadOnlyList<TenantMemberSummaryRow>? items, int total) = await memberQuery.QueryMembersAsync(
             TenantId, keyword, orgId, memberRole, memberStatus,
-            request.Skip, request.PageSize, ct);
+            request.Skip, request.PageSize, ct, scopeOrgIds, onlyMemberId);
 
         // 查角色编码列表（按 TenantMemberId 批量查 member_roles + role.code）
         // 为减少查询量，批量查出本租户全部 member_roles + roles，内存分组
@@ -302,6 +387,23 @@ internal sealed class TenantAdminService(
     public async Task<MemberRow> GetMemberDetailAsync(long tenantMemberId, CancellationToken ct)
     {
         TenantMemberSummaryRow m = await GetTenantMemberOr404Async(tenantMemberId, ct);
+
+        // X-5 数据范围校验：范围外成员按不存在处理（防 IDOR 探测）
+        var scopeCtx = await dataScopeResolver.ResolveAsync(ct);
+        if (scopeCtx is not null && scopeCtx.Scope != DataScope.All && tenantMemberId != scopeCtx.MemberId)
+        {
+            var visible = scopeCtx.Scope switch
+            {
+                DataScope.DeptAndChildren => m.OrgId.HasValue && scopeCtx.OrgId.HasValue
+                    && ExpandSubtreeOrgIds(await repo.ListAllOrgsAsync(ct), scopeCtx.OrgId.Value).Contains(m.OrgId.Value),
+                DataScope.Dept => scopeCtx.OrgId.HasValue && m.OrgId == scopeCtx.OrgId,
+                _ => false, // Self：非本人不可见
+            };
+            if (!visible)
+            {
+                throw new NotFoundException("成员", PublicId(tenantMemberId));
+            }
+        }
 
         IReadOnlyList<string> roleCodes = await repo.ListMemberRoleCodesAsync(tenantMemberId, ct);
         return new MemberRow(
@@ -640,11 +742,19 @@ internal sealed class TenantAdminService(
 
     private static OrgNodeType ParseOrgType(string type)
     {
+        // 前端旧值 / 数值枚举双通道：Company→Group、Team→Department（D2 类型重定义后的兼容映射）
+        if (int.TryParse(type, NumberStyles.Integer, CultureInfo.InvariantCulture, out int numeric)
+            && Enum.IsDefined(typeof(OrgNodeType), numeric))
+        {
+            return (OrgNodeType)numeric;
+        }
+
         return type switch
         {
-            "Company" => OrgNodeType.Company,
-            "Department" => OrgNodeType.Department,
-            "Team" => OrgNodeType.Team,
+            "Group" or "Company" => OrgNodeType.Group,
+            "Subsidiary" => OrgNodeType.Subsidiary,
+            "Department" or "Team" => OrgNodeType.Department,
+            "Project" => OrgNodeType.Project,
             _ => throw new ValidationException("type", $"无效的节点类型：{type}"),
         };
     }
@@ -659,8 +769,8 @@ internal sealed class TenantAdminService(
     private static OrganizationFlatRow MapOrg(Organization o, int memberCount)
     {
         return new(
-        o.Id, o.ParentId, o.Name, o.Type.ToString(),
-        o.ManagerMemberId, o.Status.ToString(), o.SortOrder, o.IsBuiltin, o.CreatedAt, memberCount);
+        o.Id, o.ParentId, o.Code, o.Name, o.Type.ToString(),
+        o.LeaderPersonId, o.Status.ToString(), o.SortOrder, o.IsBuiltin, o.CreatedAt, memberCount);
     }
 
     private static RoleRow MapRole(Role r, int memberCount, int permissionCount)
@@ -674,6 +784,6 @@ internal sealed class TenantAdminService(
     {
         return new(
         p.Id, p.OrgId, p.Name, p.Code, p.Headcount, p.CurrentCount,
-            p.Status.ToString(), p.Description, p.UpdatedAt);
+            p.Status.ToString(), p.Description, p.Duty, p.UpdatedAt);
     }
 }

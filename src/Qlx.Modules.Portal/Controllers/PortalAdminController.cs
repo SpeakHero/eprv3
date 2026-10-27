@@ -9,10 +9,8 @@
 
 using System.Net.Mime;
 using System.Text;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using OpenIddict.Validation.AspNetCore;
 using Qlx.Abstractions.Domain;
 using Qlx.Abstractions.Exceptions;
 using Qlx.Abstractions.Sse;
@@ -39,9 +37,6 @@ namespace Qlx.Modules.Portal.Controllers;
 /// <param name="idObfuscator">ID 混淆器（边界解码租户/用户标识）。</param>
 /// <param name="sseOptions">SSE 基座配置（心跳周期）。</param>
 [ApiController]
-[Authorize(
-    AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme,
-    Policy = QlxAuthConstants.Policies.PortalAdmin)]
 [Route("api/portal/admin")]
 [Produces(MediaTypeNames.Application.Json)]
 public sealed class PortalAdminController(
@@ -61,12 +56,12 @@ public sealed class PortalAdminController(
 
     /// <summary>分页查询租户。</summary>
     [HttpGet("tenants")]
-    public async Task<ApiResponse<PortalPagedResult<PortalTenantItem>>> QueryTenants(
+    public async Task<ApiResponse<PagedResult<PortalTenantItem>>> QueryTenants(
         [FromQuery] PortalTenantQueryRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         var page = await tenantService.QueryAsync(request, cancellationToken).ConfigureAwait(false);
-        return ApiResponse<PortalPagedResult<PortalTenantItem>>.Ok(page);
+        return ApiResponse<PagedResult<PortalTenantItem>>.Ok(page);
     }
 
     /// <summary>新建租户（自动建库 + 默认许可 + 初始管理员）。</summary>
@@ -149,12 +144,12 @@ public sealed class PortalAdminController(
 
     /// <summary>分页查询门户用户。</summary>
     [HttpGet("users")]
-    public async Task<ApiResponse<PortalPagedResult<PortalUserItem>>> QueryUsers(
+    public async Task<ApiResponse<PagedResult<PortalUserItem>>> QueryUsers(
         [FromQuery] PortalUserQueryRequest request, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
         var page = await userService.QueryAsync(request, cancellationToken).ConfigureAwait(false);
-        return ApiResponse<PortalPagedResult<PortalUserItem>>.Ok(page);
+        return ApiResponse<PagedResult<PortalUserItem>>.Ok(page);
     }
 
     /// <summary>启用 / 停用门户用户。</summary>

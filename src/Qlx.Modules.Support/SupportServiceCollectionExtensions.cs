@@ -112,7 +112,7 @@ public static class SupportServiceCollectionExtensions
             sp.GetRequiredService<IOptions<LocalFileStorageOptions>>(),
             sp.GetRequiredService<IHostEnvironment>().ContentRootPath));
 
-        // 文件域任务处理器（13 个 TaskCode；模块许可停用时入口由许可中间件整体 404）
+        // 文件域任务处理器（14 个 TaskCode；模块许可停用时入口由许可中间件整体 404）
         services.AddScoped<IJobHandler, FileUploadHandler>();
         services.AddScoped<IJobHandler, FileChunkAssembleHandler>();
         // FilePreviewHandler 依赖具体 FileDownloadHandler 复用下载逻辑：具体类型注册为 Self，
@@ -128,6 +128,7 @@ public static class SupportServiceCollectionExtensions
         services.AddScoped<IJobHandler, FileListHandler>();
         services.AddScoped<IJobHandler, FileSoftDeleteHandler>();
         services.AddScoped<IJobHandler, FileRestoreHandler>();
+        services.AddScoped<IJobHandler, FilePurgeHandler>();
         services.AddScoped<IJobHandler, FileRecycleListHandler>();
 
         // 系统级任务处理器（6 个；message/audit/session 为观测模式，能力落地后替换实现）
@@ -194,6 +195,9 @@ public static class SupportServiceCollectionExtensions
         services.AddScoped<ISupportMessageService>(static sp => sp.GetRequiredService<SupportMessageService>());
         // 渠道分发执行器（Hangfire Worker 作用域内经 MessageDeliveryInvoker 惰性解析）
         services.AddScoped<IMessageDeliveryExecutor, MessageDeliveryExecutor>();
+
+        // 端点授权规则基线（集中式授权映射，替代控制器硬编码 [Authorize]）
+        services.AddSingleton<Qlx.Abstractions.Authorization.IEndpointPolicyMapProvider, SupportEndpointPolicyMap>();
 
         return services;
     }

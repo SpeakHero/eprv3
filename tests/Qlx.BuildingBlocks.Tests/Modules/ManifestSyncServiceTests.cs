@@ -304,7 +304,7 @@ public sealed class ManifestSyncServiceTests
         return new PortalManifestSyncService(
             _factory,
             new StubSnowflakeIdGenerator(),
-            modules.ToList(),
+            [.. modules],
             new MemoryCacheService(Microsoft.Extensions.Options.Options.Create(new CacheOptions())),
             NullLogger<PortalManifestSyncService>.Instance);
     }

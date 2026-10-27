@@ -105,7 +105,7 @@ public sealed partial class TenantMigrationRunner(
     }
 
     /// <summary>按依赖拓扑排序模块迁移计划。</summary>
-    internal IReadOnlyList<ITenantMigrationPlan> GetSortedPlans() => TopologicalSort(_plans.ToList());
+    internal IReadOnlyList<ITenantMigrationPlan> GetSortedPlans() => TopologicalSort([.. _plans]);
 
     /// <summary>租户共享库的模块历史表名（独立库不使用）。</summary>
     internal static string BuildHistoryTableName(string moduleCode)

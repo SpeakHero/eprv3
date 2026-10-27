@@ -1,9 +1,10 @@
 /*
  * 所属公司：四川淇利馨集团有限公司
  * 作者：SpeakHero（491960352@qq.com）
- * 版本：1.0.0 beta
+ * 版本：1.1.0 beta
  * 创建时间：2026-10-21
- * 描述：岗位实体（bas_positions）。租户内可按组织关联，编码租户内唯一。
+ * 修改时间：2026-10-25 12:00:00 +08:00 中国标准时间 星期日
+ * 描述：岗位实体（bas_positions）。租户内可按组织关联，编码租户内唯一；新增职责说明与状态行为方法。
  */
 
 using System.ComponentModel.DataAnnotations;
@@ -45,6 +46,10 @@ public sealed class Position : Qlx.Abstractions.Domain.AuditableEntity, Qlx.Abst
     [MaxLength(500)]
     public string? Description { get; internal set; }
 
+    /// <summary>岗位职责。</summary>
+    [MaxLength(500)]
+    public string? Duty { get; internal set; }
+
     /// <summary>软删标记。</summary>
     public bool IsDeleted { get; private set; }
 
@@ -66,4 +71,45 @@ public sealed class Position : Qlx.Abstractions.Domain.AuditableEntity, Qlx.Abst
     public void Disable() => Status = EntityStatus.Disabled;
     public void Enable() => Status = EntityStatus.Enabled;
     public void SoftDelete() => IsDeleted = true;
+
+    /// <summary>重命名岗位。</summary>
+    /// <param name="name">新名称。</param>
+    public void Rename(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        Name = name;
+    }
+
+    /// <summary>调整所属组织。</summary>
+    /// <param name="orgId">新组织 Id。</param>
+    public void ChangeOrg(long orgId)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(orgId);
+        OrgId = orgId;
+    }
+
+    /// <summary>调整编制人数。</summary>
+    /// <param name="headcount">新编制人数。</param>
+    public void SetHeadcount(int headcount)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(headcount);
+        Headcount = headcount;
+    }
+
+    /// <summary>回写在岗人数（由人员任职记录汇总维护）。</summary>
+    /// <param name="currentCount">当前在岗人数。</param>
+    public void SetCurrentCount(int currentCount)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(currentCount);
+        CurrentCount = currentCount;
+    }
+
+    /// <summary>设置岗位说明与职责。</summary>
+    /// <param name="description">岗位说明。</param>
+    /// <param name="duty">岗位职责。</param>
+    public void SetDescriptions(string? description, string? duty)
+    {
+        Description = description;
+        Duty = duty;
+    }
 }

@@ -6,12 +6,10 @@
  * 描述：后台任务中心 API Controller（/api/support/jobs）——Controller 层仅参数提取 + Service 调用 + 响应封装
  */
 
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using OpenIddict.Validation.AspNetCore;
-using Qlx.Abstractions.Constants;
 using Qlx.Abstractions.Jobs;
+using Qlx.Abstractions.Constants;
 using Qlx.BuildingBlocks.Api;
 using Qlx.BuildingBlocks.Audit;
 using Qlx.Modules.Support.Services.Jobs;
@@ -23,7 +21,6 @@ namespace Qlx.Modules.Support.Controllers;
 /// 路由经模块许可过滤（support.job.* 权限点）。
 /// </summary>
 /// <param name="jobService">任务中心门面服务。</param>
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
 [ApiController]
 [Route("api/support/jobs")]
 public sealed class JobController(ISupportJobService jobService) : ControllerBase

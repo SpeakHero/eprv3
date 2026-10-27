@@ -8,9 +8,7 @@
  */
 
 using System.Net.Mime;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenIddict.Validation.AspNetCore;
 using Qlx.BuildingBlocks.Api;
 using Qlx.Modules.Portal.Services;
 
@@ -25,7 +23,6 @@ namespace Qlx.Modules.Portal.Controllers;
 /// 黑名单 TTL 计算均由 Service 层承载，控制器仅做响应封装。</para>
 /// </summary>
 [ApiController]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
 [Route("api/portal")]
 public sealed class MeController(
     ICurrentUserService currentUserService,

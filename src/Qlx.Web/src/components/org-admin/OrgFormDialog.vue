@@ -1,29 +1,30 @@
 <!--
   所属公司：四川淇利馨集团有限公司
-  描述：组织新建 / 编辑弹窗——上级选项排除自身及下级（内置 collectOrgIds），负责人候选下拉
-  说明：受控展示组件（包装 QlxFormDialog）；nodes 为 buildOrgTree 产出的嵌套树，
-        提交时抛出 SaveOrgInput，由页面接线适配层
+  描述：组织新建 / 编辑弹窗（Bas 主数据版）——上级选项排除自身及下级、四级类型、人员负责人、有效期
+  说明：
+    1. 受控展示组件（包装 QlxFormDialog）；nodes 为 buildOrgTree 产出的嵌套树；
+    2. 编码由后端发号器生成，表单不出现编码输入框，仅在名称字段下方只读回显（N-1）；
+    3. 类型 / 负责人以原始值提交（类型数值，负责人为人员 Id），中文映射在公共层（B-4）。
 -->
 <script setup lang="ts">
 import { computed } from 'vue'
 import QlxFormDialog from '@/components/crud/QlxFormDialog.vue'
 import type { FormField, FormFieldOption, FormValue } from '@/components/crud/QlxFormDialog.vue'
-import type { MemberOption, OrgNodeType, SaveOrgInput } from '@/types/org-admin'
-import { orgTypeLabels } from '@/types/tenant'
-import { buildOrgOptions, collectOrgIds } from './org-admin-utils'
-import type { OrgTreeNode } from './org-admin-utils'
+import type { BasOrgType, PersonOption, SaveBasOrgPayload } from '@/types/bas-master'
+import { buildOrgOptions, basOrgTypeOptions, collectOrgIds } from './org-admin-utils'
+import type { BasOrgTreeNode } from './org-admin-utils'
 
 const props = withDefaults(
   defineProps<{
     modelValue: boolean
     /** 编辑中的节点（null = 新增下级）。 */
-    editing: OrgTreeNode | null
+    editing: BasOrgTreeNode | null
     /** 新增时的默认上级（页面传入当前选中节点）。 */
-    defaultParent?: OrgTreeNode | null
+    defaultParent?: BasOrgTreeNode | null
     /** 组织树（上级选项数据源）。 */
-    nodes: OrgTreeNode[]
-    /** 负责人候选。 */
-    managerOptions: MemberOption[]
+    nodes: BasOrgTreeNode[]
+    /** 负责人候选（人员主数据）。 */
+    leaderOptions: PersonOption[]
     submitting?: boolean
   }>(),
   { defaultParent: null, submitting: false },
@@ -31,7 +32,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{
   'update:modelValue': [open: boolean]
-  submit: [input: SaveOrgInput]
+  submit: [input: SaveBasOrgPayload]
 }>()
 
 const visible = computed({
@@ -43,9 +44,8 @@ const title = computed(() => {
   if (props.editing) {
     return `编辑组织 · ${props.editing.name}`
   }
-  // 组织树为空时首个组织必须是公司根节点（上级不可选），标题同步收敛
   if (props.nodes.length === 0) {
-    return '新建公司根节点'
+    return '新建集团节点'
   }
   return `新增下级组织${props.defaultParent ? ` · ${props.defaultParent.name}` : ''}`
 })
@@ -55,12 +55,16 @@ const fields = computed<FormField[]>(() => {
   // 编辑时上级选项排除自身及全部下级（避免环形层级，与后端校验同规则）
   const excluded = editing ? collectOrgIds(editing) : undefined
   const isRoot = editing?.parentId === null
-  // 首个组织（组织树为空）允许无上级，作为公司根节点创建
+  // 首个组织（组织树为空）允许无上级，作为集团根节点创建
   const isFirstOrg = !editing && props.nodes.length === 0
   const parentOptions: FormFieldOption[] = [
-    { label: '无上级（公司根节点）', value: '' },
+    { label: '无上级（集团根节点）', value: '' },
     ...buildOrgOptions(props.nodes, excluded),
   ]
+  // 编码只读回显（不提供输入框，N-1）
+  const codeHint = editing
+    ? `编码 ${editing.code} 由系统生成，不可修改`
+    : '编码由系统按编码规则自动生成，无需填写'
   return [
     {
       prop: 'parentId',
@@ -73,9 +77,9 @@ const fields = computed<FormField[]>(() => {
       disabled: isRoot || isFirstOrg,
       defaultValue: editing ? (editing.parentId ?? '') : (isFirstOrg ? '' : (props.defaultParent?.id ?? '')),
       hint: isRoot
-        ? '公司根节点不可调整上级组织'
+        ? '集团根节点不可调整上级组织'
         : isFirstOrg
-          ? '组织树为空，当前创建的是公司根节点'
+          ? '组织树为空，当前创建的是集团根节点'
           : '上级组织不能选择自身或下级组织',
     },
     {
@@ -85,28 +89,32 @@ const fields = computed<FormField[]>(() => {
       required: true,
       maxlength: 40,
       defaultValue: editing?.name ?? '',
+      hint: codeHint,
     },
     {
       prop: 'type',
       label: '组织类型',
       type: 'select',
       required: true,
-      options: Object.entries(orgTypeLabels).map(([value, label]) => ({ label, value })),
-      defaultValue: editing?.type ?? 'Department',
+      options: basOrgTypeOptions().map((option) => ({
+        label: option.label,
+        value: option.value,
+      })),
+      defaultValue: editing?.type ?? (isFirstOrg ? 1 : 3),
     },
     {
-      prop: 'managerMemberId',
+      prop: 'leaderPersonId',
       label: '负责人',
       type: 'select',
       filterable: true,
       options: [
         { label: '暂不指定', value: '' },
-        ...props.managerOptions.map((member) => ({
-          label: `${member.name}（${member.account}）`,
-          value: member.id,
+        ...props.leaderOptions.map((person) => ({
+          label: `${person.name}（${person.code}）`,
+          value: person.id,
         })),
       ],
-      defaultValue: editing?.managerMemberId ?? '',
+      defaultValue: editing?.leaderPersonId ?? '',
     },
     {
       prop: 'sortOrder',
@@ -115,6 +123,19 @@ const fields = computed<FormField[]>(() => {
       defaultValue: editing?.sortOrder ?? 10,
       hint: '同级组织按排序号升序展示',
     },
+    {
+      prop: 'effectDate',
+      label: '生效日期',
+      type: 'date',
+      defaultValue: editing?.effectDate ?? '',
+    },
+    {
+      prop: 'expiryDate',
+      label: '失效日期',
+      type: 'date',
+      defaultValue: editing?.expiryDate ?? '',
+      hint: '留空表示长期有效',
+    },
   ]
 })
 
@@ -122,9 +143,11 @@ function onSubmit(values: Record<string, FormValue>): void {
   emit('submit', {
     parentId: values.parentId ? String(values.parentId) : null,
     name: String(values.name ?? '').trim(),
-    type: String(values.type ?? 'Department') as OrgNodeType,
-    managerMemberId: values.managerMemberId ? String(values.managerMemberId) : null,
+    type: Number(values.type ?? 3) as BasOrgType,
+    leaderPersonId: values.leaderPersonId ? String(values.leaderPersonId) : null,
     sortOrder: Number(values.sortOrder ?? 0),
+    effectDate: values.effectDate ? String(values.effectDate) : null,
+    expiryDate: values.expiryDate ? String(values.expiryDate) : null,
   })
 }
 </script>

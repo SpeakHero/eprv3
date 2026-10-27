@@ -9,7 +9,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 import { mockFileUploadService } from './file-mock'
 import { formatBytes, SYNC_MODE_LIMIT_BYTES } from './types'
-import type { FileUploadService, UploadTask } from './types'
+import type { FileReferenceInfo, FileUploadService, UploadTask } from './types'
 import type { SseClient, SseEventPayload } from '@/core/sse'
 import { createSseClient } from '@/core/sse'
 
@@ -19,6 +19,11 @@ const props = defineProps<{
   /** SSE 客户端（ASYNC 进度 / 完成事件；默认内部创建 mock 传输客户端）。 */
   sseClient?: SseClient | null
   bizType?: string
+}>()
+
+const emit = defineEmits<{
+  /** 单个文件上传成功（宿主据此刷新列表）。 */
+  uploaded: [result: FileReferenceInfo]
 }>()
 
 const service = () => props.service ?? mockFileUploadService
@@ -73,7 +78,7 @@ function onSseEvent(event: SseEventPayload): void {
     task.phase = 'success'
     task.percent = 100
     task.message = '上传完成（SSE 装配回执）'
-    task.result = {
+    const result: FileReferenceInfo = {
       fileId: String(data.result.fileId ?? data.result.file_id ?? ''),
       storageKey: String(data.result.storageKey ?? data.result.storage_key ?? ''),
       fileName: task.fileName,
@@ -84,6 +89,8 @@ function onSseEvent(event: SseEventPayload): void {
       refCount: (data.result.refCount ?? data.result.ref_count ?? undefined) as number | undefined,
       dedupHit: Boolean(data.result.dedupHit ?? data.result.dedup_hit ?? false),
     }
+    task.result = result
+    emit('uploaded', result)
   }
 }
 
@@ -139,6 +146,7 @@ async function runUpload(task: UploadTask & { executionId?: string; contentType?
       task.percent = 100
       task.message = result.dedupHit ? `秒传命中 · 引用计数 ${result.refCount ?? 1}` : '上传成功（SHA-256 已校验）'
       task.result = result
+      emit('uploaded', result)
       return
     }
 

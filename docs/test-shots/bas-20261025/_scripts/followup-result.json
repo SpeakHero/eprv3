@@ -1,0 +1,47 @@
+{
+  "steps": {
+    "person_create": {
+      "ok": true,
+      "message": "人员已创建",
+      "masked_id": "0105****002X",
+      "masked_mobile": "105****002",
+      "has_plaintext_button": true,
+      "has_leave_button": true,
+      "emp_code": "EMP-000001"
+    },
+    "person_plaintext": {
+      "ok": true,
+      "message": "",
+      "has_full_id": true
+    },
+    "dict_visibility": {
+      "visible_group_type": true,
+      "visible_sub_type": false,
+      "group_type_rows": 0,
+      "sub_type_rows": 0,
+      "alert_readonly": true
+    },
+    "changelog": {
+      "ok": true,
+      "rows": 21,
+      "has_empty": false,
+      "mentions_person": true,
+      "excerpt": "淇\n淇利馨集团\nQILIXIN GROUP · 数智经营管理平台\n工作台\n基础资料\n系\n系统管理员\n淇利馨 ERP 开发租户 · 企业管理员\n\n工作台\n\n组织机构\n成员管理\n角色权限\n商品分类\n计量单位\n供应商管理\n客户管理\n人员主数据\n数据字典\n编码规则\n变更日志\n职责边界\n组织、成员、角色与业务数据\n租户内成员启停与权限分配\n模块启停由门户许可控制\n自然人全局停用由门户控制\n\n以上边界依据《SaaS 架构规范》5.1 租户自管理域。\n\n工作台\n/\n企业管理\n/\n变更日志\n变更日志\n\n主数据审计流水 · 对象类型 / 操作人 / 时间区间筛选（规范 5.2.6）\n\n刷新\n对象类型\n全部\n操作人\n开始日期\n结束日期\n查询\n重置\n变更时间\n\t\n对象类型\n\t\n操作\n\t\n对象 Id\n\t\n操作人\n\t\n操作\n2026-10-25 18:14\n\t\n人员\n\t\n查看敏感明文\n\t\nnjM5PvKe\n\t\naPV0jVYgxx0w\n\t\n变更详情\n\n\n2026-10-25 18:14\n\t\n人员\n\t\n新增\n\t\nnjM5PvKe\n\t\naPV0jVYgxx0w\n\t\n变更详情\n\n\n2026-10-25 18:07\n\t\n客户\n\t\n新增\n\t\nnjM5PvKe\n\t\naPV0jVYgxx0w\n\t\n变更详情\n\n\n2026-10-25 18:06\n\t\n供应商\n\t\n新增\n\t\nnjM5PvKe\n\t\naPV0jVYgxx0w\n\t\n"
+    }
+  },
+  "messages": [
+    "人员已创建"
+  ],
+  "screenshots": [
+    "34-person-form-filled.png",
+    "35-person-form-org-pos.png",
+    "36-person-created.png",
+    "37-person-plaintext.png",
+    "38-dict-list.png",
+    "40-changelog-after-person.png"
+  ],
+  "login_url": "http://localhost:5173/workbench",
+  "console": [],
+  "page_errors": [],
+  "failed_requests": []
+}

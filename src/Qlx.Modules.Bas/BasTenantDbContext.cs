@@ -1,15 +1,16 @@
 /*
  * 所属公司：四川淇利馨集团有限公司
  * 作者：SpeakHero（491960352@qq.com）
- * 版本：1.0.0 beta
+ * 版本：1.1.0 beta
  * 创建时间：2026-10-21
- * 修改时间：2026-10-22 20:40:00 +08:00 中国标准时间 星期四
+ * 修改时间：2026-10-25 12:00:00 +08:00 中国标准时间 星期日
  * 描述：Bas（基础信息）模块租户级 DbContext，表前缀 bas_，继承 TenantDbContext 自动路由租户库 + 全局 TenantId 过滤
  */
 
 using Microsoft.EntityFrameworkCore;
 using Qlx.Abstractions.Constants;
 using Qlx.BuildingBlocks.MultiTenancy;
+using Qlx.Modules.Bas.Domain;
 
 namespace Qlx.Modules.Bas;
 
@@ -27,4 +28,27 @@ public sealed partial class BasTenantDbContext(
 {
     /// <inheritdoc />
     protected override string? GetModuleTablePrefix() => QlxModuleCodes.BasTablePrefix;
+
+    /// <inheritdoc />
+    /// <remarks>
+    /// 数据注解无法表达过滤索引：审批挂起请求的 <c>ApprovalInstanceId</c> 在发起审批前为 null，
+    /// 唯一索引必须以 <c>approval_instance_id IS NOT NULL</c> 过滤，避免多行空值互相冲突。
+    /// </remarks>
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        ArgumentNullException.ThrowIfNull(modelBuilder);
+        base.OnModelCreating(modelBuilder);
+
+        _ = modelBuilder.Entity<BasApprovalRequest>()
+            .HasIndex(r => new { r.TenantId, r.ApprovalInstanceId })
+            .IsUnique()
+            .HasFilter("approval_instance_id IS NOT NULL");
+
+        // 人员证件号哈希租户内唯一：必须过滤软删行（is_deleted = 0），
+        // 否则软删人员与在职人员的同一证件号会互相冲突（N-3 / 人员防重）。
+        _ = modelBuilder.Entity<Domain.Person.Person>()
+            .HasIndex(p => new { p.TenantId, p.IdNoHash })
+            .IsUnique()
+            .HasFilter("is_deleted = 0");
+    }
 }

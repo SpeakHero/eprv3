@@ -197,7 +197,7 @@ public sealed class SupportJobService(
             .ToDictionaryAsync(static c => c.TaskCode, cancellationToken)
             .ConfigureAwait(false);
 
-        return definitions
+        return [.. definitions
             .Select(d => configs.TryGetValue(d.TaskCode, out var config)
                 ? new JobDefinitionItem(
                     d.TaskCode, d.Name, d.ModuleCode, d.DefaultCron, config.CronOverride,
@@ -207,8 +207,7 @@ public sealed class SupportJobService(
                 : new JobDefinitionItem(
                     d.TaskCode, d.Name, d.ModuleCode, d.DefaultCron, null,
                     d.DefaultCron, d.DefaultMode.ToString(), d.Enabled, d.Paused,
-                    d.DefaultTimeoutSeconds, d.NextRunAt))
-            .ToList();
+                    d.DefaultTimeoutSeconds, d.NextRunAt))];
     }
 
     /// <inheritdoc />

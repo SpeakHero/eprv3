@@ -3,7 +3,10 @@
  * 作者：SpeakHero（491960352@qq.com）
  * 版本：1.0.0 beta
  * 创建时间：2026-10-22 19:40:00 +08:00 中国标准时间 星期四
- * 描述：审批流程注册表——代码默认定义内存注册（2A 契约）+ DB 启用版本解析（R1 唯一启用、R2 版本锁定）
+ * 修改时间：2026-10-26 22:00:00 +08:00 中国标准时间 星期一
+ * 描述：审批流程注册表——代码默认定义内存注册（2A 契约）+ DB 启用版本解析（R1 唯一启用、R2 版本锁定）；
+ *       显式定义编码优先解析（同单据类型多流程：调拨内部/跨公司、成本调整普通/大额）；
+ *       本 bizType 命中 0 条时按 DefCode 幂等补种默认流程一次后重查（D7）
  */
 
 using System.Globalization;
@@ -98,10 +101,10 @@ public sealed class ApprovalFlowRegistry(SupportTenantDbContext db, Files.Suppor
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        // 懒种子：仅租户级零流程定义时补种默认流程后重查一次（与任务定义懒种子同模式）；
-        // 已有定义但本 bizType 未命中属正常"未配置"，不触发种子避免无效往返
-        if (definitions.Count == 0
-            && !await _db.FlowDefinitions.AnyAsync(cancellationToken).ConfigureAwait(false))
+        // 懒种子：本 bizType 命中 0 条时补种一次后重查（D7）。种子按 DefCode 幂等
+        // （已存在 / 已停用一律跳过，不覆盖租户自定义），因此仅补种一次即可，不会反复写库；
+        // 存量租户已有默认流程时，新增 Bas 主数据流程经此路径自动补齐。
+        if (definitions.Count == 0)
         {
             await _seedService.EnsureApprovalFlowsSeededAsync(_db.CurrentTenantId, cancellationToken)
                 .ConfigureAwait(false);
@@ -145,6 +148,34 @@ public sealed class ApprovalFlowRegistry(SupportTenantDbContext db, Files.Suppor
     }
 
     /// <summary>
+    /// 按显式定义编码解析启用流程（发起方明确指定流程时优先）。
+    /// 适用同单据类型挂多条流程的场景（如调拨「同公司 / 跨公司」、成本调整「普通 / 大额」），
+    /// 此时 biz_type 无法唯一确定流程，必须按定义编码选取；同编码多个启用版本时取最高版本（R2）。
+    /// </summary>
+    /// <param name="definitionCode">流程定义编码。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>启用流程聚合（该编码未启用/不存在返回 null）。</returns>
+    public async Task<EnabledApprovalFlow?> ResolveByCodeAsync(
+        string definitionCode, CancellationToken cancellationToken)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(definitionCode);
+
+        var definition = await FindEnabledByCodeAsync(definitionCode, cancellationToken).ConfigureAwait(false);
+
+        // 懒种子：编码未命中时补种一次后重查（与 ResolveEnabledAsync 同模式，按 DefCode 幂等）
+        if (definition is null)
+        {
+            await _seedService.EnsureApprovalFlowsSeededAsync(_db.CurrentTenantId, cancellationToken)
+                .ConfigureAwait(false);
+            definition = await FindEnabledByCodeAsync(definitionCode, cancellationToken).ConfigureAwait(false);
+        }
+
+        return definition is null
+            ? null
+            : await LoadAggregateAsync(definition, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// 按实例锁定的定义 Id 装载流程聚合（R2 版本隔离：在途实例始终按提交时锁定版本流转，不受新版本影响）。
     /// </summary>
     /// <param name="defId">锁定的流程定义 Id。</param>
@@ -159,15 +190,38 @@ public sealed class ApprovalFlowRegistry(SupportTenantDbContext db, Files.Suppor
             .ConfigureAwait(false)
             ?? throw new NotFoundException("流程定义", defId.ToString(CultureInfo.InvariantCulture));
 
+        return await LoadAggregateAsync(definition, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>按定义编码取启用版本（同编码多启用版本取最高版本）。</summary>
+    /// <param name="definitionCode">流程定义编码。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>定义行（未启用返回 null）。</returns>
+    private async Task<ApprovalFlowDefinition?> FindEnabledByCodeAsync(
+        string definitionCode, CancellationToken cancellationToken)
+        => await _db.FlowDefinitions
+            .AsNoTracking()
+            .Where(d => d.DefCode == definitionCode && d.Status == ApprovalFlowStatus.Enabled)
+            .OrderByDescending(d => d.Version)
+            .FirstOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+    /// <summary>装载定义下的节点与分支（一次批量查询装配，禁止 N+1）。</summary>
+    /// <param name="definition">流程定义行。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>流程聚合。</returns>
+    private async Task<EnabledApprovalFlow> LoadAggregateAsync(
+        ApprovalFlowDefinition definition, CancellationToken cancellationToken)
+    {
         var nodes = await _db.FlowNodes
             .AsNoTracking()
-            .Where(n => n.DefId == defId)
+            .Where(n => n.DefId == definition.Id)
             .OrderBy(n => n.SortNo)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
         var branches = await _db.FlowBranches
             .AsNoTracking()
-            .Where(b => b.DefId == defId)
+            .Where(b => b.DefId == definition.Id)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

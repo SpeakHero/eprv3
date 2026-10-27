@@ -50,6 +50,9 @@ public static class FileTaskCodes
     /// <summary>回收站还原（SYNC）。</summary>
     public const string Restore = "file.restore";
 
+    /// <summary>回收站彻底删除（SYNC：物理清理，不可恢复）。</summary>
+    public const string Purge = "file.purge";
+
     /// <summary>回收站列表（SYNC）。</summary>
     public const string RecycleList = "file.recycle.list";
 }

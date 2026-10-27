@@ -231,7 +231,7 @@ public sealed partial class ImportExportService
         }
 
         errors.AddRange(invalidByRow.Values.SelectMany(static e => e));
-        return staged.Where(r => !invalidByRow.ContainsKey(r.RowNumber)).ToList();
+        return [.. staged.Where(r => !invalidByRow.ContainsKey(r.RowNumber))];
     }
 
     /// <summary>读取单元格规范化文本（空白单元格返回空串，两端去空白）。</summary>

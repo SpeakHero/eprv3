@@ -71,7 +71,7 @@ internal static class FileAclGuard
             .ConfigureAwait(false);
 
         var pathById = ancestors.ToDictionary(static a => a.Id, static a => a.Path);
-        return entries
+        return [.. entries
             .Select(e => new AclEngineEntry(
                 e.ObjectId,
                 pathById.GetValueOrDefault(e.ObjectId, target.Path),
@@ -79,8 +79,7 @@ internal static class FileAclGuard
                 e.SubjectId,
                 (FilePermission)e.PermMask,
                 (AceType)e.AceType,
-                e.Propagate))
-            .ToList();
+                e.Propagate))];
     }
 
     /// <summary>解析当前操作者的租户主体（用户 Id 非数字时视为匿名主体；供回收站管理员判定等复用）。</summary>

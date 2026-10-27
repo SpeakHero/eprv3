@@ -3,6 +3,7 @@
  * 描述：密码复杂度与历史禁重策略校验器——复杂度规则从 QlxAuthOptions 读取，历史禁重用 VerifyHashedPassword 逐个对比。
  */
 
+using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
@@ -26,28 +27,50 @@ public static partial class PasswordPolicyValidator
     /// <exception cref="ValidationException">复杂度不满足时抛出。</exception>
     public static void ValidateComplexity(string password, QlxAuthOptions options)
     {
+        if (TryGetComplexityError(password, options, out var error))
+        {
+            throw new ValidationException("newPassword", error);
+        }
+    }
+
+    /// <summary>尝试获取新密码复杂度错误描述（不抛异常，供 DataAnnotations 验证管线复用统一规则）。</summary>
+    /// <param name="password">新密码。</param>
+    /// <param name="options">密码策略配置（复杂度规则来源）。</param>
+    /// <param name="error">复杂度不满足时的错误消息。</param>
+    /// <returns>复杂度不满足返回 <see langword="true"/>；满足（或密码为空，由 <c>[Required]</c> 管辖）返回 <see langword="false"/>。</returns>
+    public static bool TryGetComplexityError(
+        string password,
+        QlxAuthOptions options,
+        [NotNullWhen(true)] out string? error)
+    {
         ArgumentNullException.ThrowIfNull(options);
 
         if (string.IsNullOrWhiteSpace(password) || password.Length < options.MinPasswordLength)
         {
-            throw new ValidationException("newPassword",
-                $"新密码至少 {options.MinPasswordLength} 位");
+            error = $"新密码至少 {options.MinPasswordLength} 位";
+            return true;
         }
 
         if (options.PasswordRequireLetter && !password.Any(char.IsAsciiLetter))
         {
-            throw new ValidationException("newPassword", "新密码必须包含字母");
+            error = "新密码必须包含字母";
+            return true;
         }
 
         if (options.PasswordRequireDigit && !password.Any(char.IsAsciiDigit))
         {
-            throw new ValidationException("newPassword", "新密码必须包含数字");
+            error = "新密码必须包含数字";
+            return true;
         }
 
         if (options.PasswordRequireSpecialChar && !SpecialCharRegex().IsMatch(password))
         {
-            throw new ValidationException("newPassword", "新密码必须包含特殊字符");
+            error = "新密码必须包含特殊字符";
+            return true;
         }
+
+        error = null;
+        return false;
     }
 
     /// <summary>校验新密码不与最近 N 次历史密码相同（N=0 时跳过）。</summary>

@@ -1,10 +1,11 @@
 /*
  * 所属公司：四川淇利馨集团有限公司
  * 作者：SpeakHero（491960352@qq.com）
- * 版本：1.0.0 beta
+ * 版本：1.1.0 beta
  * 创建时间：2026-10-21 04:30:00 +08:00 中国标准时间 星期三
- * 修改时间：2026-10-22 16:30:00 +08:00 中国标准时间 星期四
+ * 修改时间：2026-10-26 23:20:00 +08:00 中国标准时间 星期一
  * 描述：Portal 模块 DI 注册扩展：PortalDbContext + 生产版 Resolver + Provisioning 仓储 + 升级任务仓储/服务
+ *       租户 / 用户管理服务经 AddValidatedScoped 注册（ValidationDispatchProxy 方法入口自动校验）
  */
 
 using Microsoft.AspNetCore.Authorization;
@@ -20,6 +21,7 @@ using Qlx.BuildingBlocks.Authorization;
 using Qlx.BuildingBlocks.Configuration;
 using Qlx.BuildingBlocks.Modules;
 using Qlx.BuildingBlocks.MultiTenancy;
+using Qlx.BuildingBlocks.Validation;
 using Qlx.Modules.Portal.Services;
 
 namespace Qlx.Modules.Portal;
@@ -101,17 +103,21 @@ public static class PortalServiceCollectionExtensions
         services.AddScoped<ISystemParameterAdminService, SystemParameterAdminService>();
 
         // 门户管理端（阶段 1D）：租户 / 用户 / 模块 / 工作台，共享同一 scoped PortalDbContext 保证新建租户单事务
+        // 租户 / 用户服务经 AddValidatedScoped 注册：ValidationDispatchProxy 在接口方法入口自动校验
+        // [Validate] 标记参数与实现 IValidatableObject 的 DTO（如 ResetPortalUserPasswordRequest 的密码策略）
         services.AddScoped<Repositories.IPortalTenantAdminRepository, Repositories.PortalTenantAdminRepository>();
         services.AddScoped<Repositories.IPortalUserAdminRepository, Repositories.PortalUserAdminRepository>();
         services.AddScoped<Repositories.IPortalModuleAdminRepository, Repositories.PortalModuleAdminRepository>();
-        services.AddScoped<IPortalTenantAdminService, PortalTenantAdminService>();
-        services.AddScoped<IPortalUserAdminService, PortalUserAdminService>();
+        services.AddValidatedScoped<IPortalTenantAdminService, PortalTenantAdminService>();
+        services.AddValidatedScoped<IPortalUserAdminService, PortalUserAdminService>();
         services.AddScoped<IPortalModuleAdminService, PortalModuleAdminService>();
         services.AddScoped<IPortalOverviewService, PortalOverviewService>();
         services.AddScoped<IPortalLoginAuditLogger, PortalLoginAuditLogger>();
 
         // 认证与会话服务（Controller 仅做 HTTP 转换与响应封装，业务规则在 Service 层）
         services.AddScoped<IPortalAuthenticationService, PortalAuthenticationService>();
+        // 待激活成员首登激活器（X-6：密码校验通过即接受邀请 + MEMBER_ACTIVATE 审计）
+        services.AddScoped<IPendingInviteActivator, PendingInviteActivator>();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
         services.AddScoped<IPortalLogoutService, PortalLogoutService>();
 
@@ -140,7 +146,7 @@ public static class PortalServiceCollectionExtensions
         services.AddScoped<Qlx.Abstractions.Tenancy.ITenantMemberAdmin, TenantMemberAdmin>();
 
         // ======= ModuleManifest 同步服务（宿主启动期调用 SyncAllAsync 将 Manifest 物化到 Portal 库）=======
-        // 依赖 IEnumerable<IModule>（由 AddQlxModules 扫描注册），Scoped 生命周期
+        // 依赖 IReadOnlyList<IModule>（AddQlxModules 以列表单例注册），Scoped 生命周期
         services.AddScoped<IModuleManifestSyncService, PortalManifestSyncService>();
 
         // 门户管理员授权策略：身份级 Token 的 is_portal_admin claim = 1
@@ -149,12 +155,26 @@ public static class PortalServiceCollectionExtensions
             options.AddPolicy(Auth.QlxAuthConstants.Policies.PortalAdmin, policy => policy
                 .RequireAuthenticatedUser()
                 .RequireClaim(Auth.QlxAuthConstants.Claims.PortalAdminFlag, PortalConstants.PortalAdminFlagValue));
+
+            // 租户上下文前置策略：仅租户级 Token（携带 tenant_id claim）可访问租户侧 API，
+            // 身份级 Token 统一 403（杜绝 TenantDbContext 500 内部细节直出）
+            options.AddPolicy(Qlx.Abstractions.Constants.QlxPolicyNames.TenantContext, policy => policy
+                .RequireAuthenticatedUser()
+                .RequireClaim(Auth.QlxAuthConstants.Claims.TenantId));
         });
+
+        // 权限点策略自动注册：按全部模块 Manifest 的 PermissionDefinitions 物化 Permission:{code} 策略
+        services.AddSingleton<
+            Microsoft.Extensions.Options.IConfigureOptions<Microsoft.AspNetCore.Authorization.AuthorizationOptions>,
+            Qlx.BuildingBlocks.Authorization.PermissionPolicyConfigurer>();
 
         // Permission:xxx 通用授权 Handler——Controller 侧 [Authorize(Policy = "Permission:portal.tenant.view")]
         // 依赖策略内携带 PermissionRequirement(permissionCode)；各模块在各自 ConfigureServices 按需 AddPolicy。
         // Handler 区分租户/门户上下文，Admin 零计算旁路 + permissions claim Split 包含匹配。
         services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+
+        // 端点授权规则基线（集中式授权映射，替代控制器硬编码 [Authorize]）
+        services.AddSingleton<Qlx.Abstractions.Authorization.IEndpointPolicyMapProvider, PortalEndpointPolicyMap>();
 
         // 开发期种子后台服务：首次启动时填充默认租户 + 模块许可（幂等，已有租户则跳过）
         if (environment?.IsDevelopment() == true)

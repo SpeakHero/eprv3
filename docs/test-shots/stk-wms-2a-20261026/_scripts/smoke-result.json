@@ -1,0 +1,987 @@
+{
+  "title": "阶段三第二波 2A（05 商品 + 仓库最小切片）端到端冒烟",
+  "startedAt": "2026-10-26T16:53:26",
+  "base": {
+    "web": "http://localhost:5173",
+    "api": "http://localhost:5002",
+    "tenantId": 106001473065717760
+  },
+  "data": {
+    "session": {
+      "currentTenant": null,
+      "currentTenantRaw": {
+        "tenantId": "WDR60al02yXA",
+        "tenantCode": "qlx-dev",
+        "displayName": "淇利馨 ERP 开发租户",
+        "taxNo": "91510100MA0000000X",
+        "memberRole": "TenantAdmin",
+        "lastLoginAt": "2026-10-26T08:51:31.983883+00:00"
+      },
+      "licensedModules": [
+        "portal",
+        "bas",
+        "stk",
+        "wms",
+        "support"
+      ],
+      "memberRole": "TenantAdmin",
+      "isPortalAdminAccount": true,
+      "tenantTokenLength": 2955
+    },
+    "tenantHashId": "WDR60al02yXA",
+    "tenantName": "淇利馨 ERP 开发租户",
+    "license": {
+      "initial": [
+        "portal",
+        "bas",
+        "stk",
+        "wms",
+        "support"
+      ],
+      "added": [],
+      "final": [
+        "portal",
+        "bas",
+        "stk",
+        "wms",
+        "support"
+      ],
+      "tenantHashId": "WDR60al02yXA"
+    },
+    "tenantMenus": {
+      "navGroups": [
+        {
+          "code": "workbench",
+          "name": "工作台",
+          "moduleCodes": "portal,bas"
+        },
+        {
+          "code": "business",
+          "name": "业务管理",
+          "moduleCodes": "pur,sal,wms,stk,ctr,prj,eqp"
+        }
+      ],
+      "displayNames": [
+        "组织机构",
+        "成员管理",
+        "角色权限",
+        "商品分类",
+        "计量单位",
+        "供应商管理",
+        "客户管理",
+        "人员主数据",
+        "数据字典",
+        "编码规则",
+        "变更日志",
+        "商品档案",
+        "期初建账",
+        "库存台账",
+        "出入库流水",
+        "成本调整",
+        "批次库存",
+        "仓库档案"
+      ],
+      "routes": [
+        "/manage/organizations",
+        "/manage/members",
+        "/manage/roles",
+        "/manage/master/categories",
+        "/manage/master/units",
+        "/manage/master/suppliers",
+        "/manage/master/customers",
+        "/manage/master/persons",
+        "/manage/master/dictionaries",
+        "/manage/master/code-rules",
+        "/manage/changelogs",
+        "/manage/stk/items",
+        "/manage/stk/openings",
+        "/manage/stk/ledger",
+        "/manage/stk/txns",
+        "/manage/stk/cost-adjust",
+        "/manage/stk/batches",
+        "/manage/wms/warehouses"
+      ],
+      "menuModuleCodes": [
+        "bas",
+        "stk",
+        "wms"
+      ]
+    },
+    "categoryId": "njM5PvKe",
+    "categoryName": "自动化验证分类180626",
+    "unitId": "njM5PvKe",
+    "unitName": "件",
+    "warehouseId": "04YaAAjwVVVa",
+    "warehouseCode": "WH-SYS-202610-000003",
+    "warehouseName": "冒烟测试仓165326",
+    "zoneId": "oWeRqqbXbP9o",
+    "zoneCode": "Z165326",
+    "locationId": "60yDYYk18moB",
+    "locationCode": "L165326",
+    "zoneCount": 1,
+    "locationCount": 1,
+    "itemForm": {
+      "labels": [
+        "商品名称",
+        "规格",
+        "条码",
+        "商品分类",
+        "计量单位",
+        "税率(%)",
+        "批次管理",
+        "有效期管理",
+        "参考成本",
+        "指导价"
+      ],
+      "placeholders": [
+        "请输入商品名称",
+        "请输入规格",
+        "请输入条码",
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "hint": "编码由系统按规则自动生成，无需填写",
+      "noCodeLabel": true,
+      "noCodeInput": true
+    },
+    "itemCreateRequest": {
+      "id": "3Pzj3AAVzP96",
+      "approvalInstanceId": "108125932438421504",
+      "bizType": "stk.item.create",
+      "bizId": 0,
+      "status": 1
+    },
+    "itemApprovalInstanceId": "108125932438421504",
+    "itemId": "04YaAqYQzyeq",
+    "itemCode": "010003",
+    "itemStatus": 1,
+    "itemBatchEnabled": true,
+    "itemApproval": {
+      "approvedActions": 1,
+      "finalStatus": 2
+    },
+    "openingId": "X0ga6W4J17k9",
+    "openingBatchNo": "SP-QC-SYS-202610-000003",
+    "openingStatusDraft": 1,
+    "openingItems": [
+      {
+        "id": "57Jnb12jgxR4",
+        "itemId": "04YaAqYQzyeq",
+        "batchNo": "165326-B01",
+        "qty": 10.0,
+        "unitCost": 10.0,
+        "amount": 100.0
+      }
+    ],
+    "openingApprovalInstanceId": "108125960619950080",
+    "openingTodo": {
+      "taskId": "108125960632532992",
+      "instanceId": "108125960619950080",
+      "nodeCode": "warehouse_leader",
+      "nodeName": "期初过账申请：SP-QC-SYS-202610-000003（仓库负责人）",
+      "assigneeUserId": "aPV0jVYgxx0w",
+      "status": 0,
+      "createdAt": "2026-10-26T08:53:57.8957529+00:00"
+    },
+    "todoCountAtSubmit": 1,
+    "openingStatusPost": 3,
+    "openingPostApproval": {
+      "approvedActions": 3,
+      "finalStatus": 2
+    },
+    "apiBalances": [
+      {
+        "itemId": "04YaAqYQzyeq",
+        "warehouseId": "04YaAAjwVVVa",
+        "qtyOnhand": 10.0,
+        "avgCost": 10.0,
+        "amount": 100.0,
+        "qtyLocked": 0.0,
+        "lastTxnAt": "2026-10-26T08:54:02.0308775+00:00"
+      }
+    ],
+    "apiTxns": [
+      {
+        "id": "ZlYLzGmp09eD",
+        "txnNo": "SP-LS-SYS-202610-000003",
+        "sourceType": 1,
+        "sourceDocNo": "SP-QC-SYS-202610-000003",
+        "sourceLineNo": 1,
+        "itemId": "04YaAqYQzyeq",
+        "warehouseId": "04YaAAjwVVVa",
+        "batchNo": "165326-B01",
+        "direction": 1,
+        "qty": 10.0,
+        "unitCost": 10.0,
+        "amount": 100.0,
+        "balanceQtyAfter": 10.0,
+        "balanceAmountAfter": 100.0,
+        "operatorId": "aPV0jVYgxx0w",
+        "occurredAt": "2026-10-26T08:54:02.0308775+00:00"
+      }
+    ],
+    "apiBatches": [
+      {
+        "itemId": "04YaAqYQzyeq",
+        "warehouseId": "04YaAAjwVVVa",
+        "batchNo": "165326-B01",
+        "qty": 10.0,
+        "avgCost": 10.0,
+        "amount": 100.0
+      }
+    ]
+  },
+  "steps": {
+    "01_login": {
+      "ok": true,
+      "detail": {
+        "url": "http://localhost:5173/workbench",
+        "session": {
+          "currentTenant": null,
+          "currentTenantRaw": {
+            "tenantId": "WDR60al02yXA",
+            "tenantCode": "qlx-dev",
+            "displayName": "淇利馨 ERP 开发租户",
+            "taxNo": "91510100MA0000000X",
+            "memberRole": "TenantAdmin",
+            "lastLoginAt": "2026-10-26T08:51:31.983883+00:00"
+          },
+          "licensedModules": [
+            "portal",
+            "bas",
+            "stk",
+            "wms",
+            "support"
+          ],
+          "memberRole": "TenantAdmin",
+          "isPortalAdminAccount": true,
+          "tenantTokenLength": 2955
+        }
+      },
+      "ms": 8027
+    },
+    "01b_license": {
+      "ok": true,
+      "detail": {
+        "initial": [
+          "portal",
+          "bas",
+          "stk",
+          "wms",
+          "support"
+        ],
+        "added": [],
+        "final": [
+          "portal",
+          "bas",
+          "stk",
+          "wms",
+          "support"
+        ],
+        "tenantHashId": "WDR60al02yXA"
+      },
+      "ms": 7430
+    },
+    "02_menu": {
+      "ok": true,
+      "detail": {
+        "navGroupHit": {
+          "code": "business",
+          "name": "业务管理",
+          "moduleCodes": "pur,sal,wms,stk,ctr,prj,eqp"
+        },
+        "apiRoutes": [
+          "/manage/organizations",
+          "/manage/members",
+          "/manage/roles",
+          "/manage/master/categories",
+          "/manage/master/units",
+          "/manage/master/suppliers",
+          "/manage/master/customers",
+          "/manage/master/persons",
+          "/manage/master/dictionaries",
+          "/manage/master/code-rules",
+          "/manage/changelogs",
+          "/manage/stk/items",
+          "/manage/stk/openings",
+          "/manage/stk/ledger",
+          "/manage/stk/txns",
+          "/manage/stk/cost-adjust",
+          "/manage/stk/batches",
+          "/manage/wms/warehouses"
+        ],
+        "menuModuleCodes": [
+          "bas",
+          "stk",
+          "wms"
+        ],
+        "sidebarItems": {
+          "仓库档案": true,
+          "商品档案": true,
+          "期初建账": true,
+          "库存台账": true,
+          "出入库流水": true,
+          "批次库存": true,
+          "成本调整": true
+        }
+      },
+      "ms": 2875
+    },
+    "03_base_master": {
+      "ok": true,
+      "detail": {
+        "categoryCreated": false,
+        "category": "自动化验证分类180626",
+        "unitGroup": "冒烟测试单位组163907",
+        "unit": "件"
+      },
+      "ms": 48
+    },
+    "04_warehouse_create": {
+      "ok": true,
+      "detail": {
+        "warehouse": {
+          "id": "04YaAAjwVVVa",
+          "code": "WH-SYS-202610-000003",
+          "name": "冒烟测试仓165326",
+          "whType": 1,
+          "address": "四川省成都市冒烟测试地址 1 号",
+          "remark": "2A 冒烟自动创建",
+          "status": 1
+        },
+        "zone": {
+          "id": "oWeRqqbXbP9o",
+          "warehouseId": "04YaAAjwVVVa",
+          "code": "Z165326",
+          "name": "冒烟库区165326",
+          "sortOrder": 1,
+          "status": 1
+        },
+        "location": {
+          "id": "60yDYYk18moB",
+          "warehouseId": "04YaAAjwVVVa",
+          "zoneId": "oWeRqqbXbP9o",
+          "code": "L165326",
+          "sortOrder": 1,
+          "status": 1
+        },
+        "zoneCount": 1,
+        "locationCount": 1
+      },
+      "ms": 116
+    },
+    "05_warehouse_list": {
+      "ok": true,
+      "detail": {
+        "visible": true,
+        "hasCode": true
+      },
+      "ms": 2536
+    },
+    "06_item_form_no_code": {
+      "ok": true,
+      "detail": {
+        "labels": [
+          "商品名称",
+          "规格",
+          "条码",
+          "商品分类",
+          "计量单位",
+          "税率(%)",
+          "批次管理",
+          "有效期管理",
+          "参考成本",
+          "指导价"
+        ],
+        "placeholders": [
+          "请输入商品名称",
+          "请输入规格",
+          "请输入条码",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ],
+        "hint": "编码由系统按规则自动生成，无需填写",
+        "noCodeLabel": true,
+        "noCodeInput": true
+      },
+      "ms": 3302
+    },
+    "07_item_create": {
+      "ok": true,
+      "detail": {
+        "id": "3Pzj3AAVzP96",
+        "approvalInstanceId": "108125932438421504",
+        "bizType": "stk.item.create",
+        "bizId": 0,
+        "status": 1
+      },
+      "ms": 41
+    },
+    "08_item_approve": {
+      "ok": true,
+      "detail": {
+        "item": {
+          "id": "04YaAqYQzyeq",
+          "itemCode": "010003",
+          "name": "冒烟测试商品165326",
+          "spec": "10kg/箱",
+          "categoryId": "njM5PvKe",
+          "unitId": "njM5PvKe",
+          "batchEnabled": true,
+          "expiryEnabled": false,
+          "taxRate": 0.13,
+          "refCostPrice": 10.0,
+          "guidePrice": 12.0,
+          "status": 1
+        },
+        "approval": {
+          "approvedActions": 1,
+          "finalStatus": 2
+        }
+      },
+      "ms": 508
+    },
+    "09_item_list": {
+      "ok": true,
+      "detail": {
+        "itemCode": "010003",
+        "visible": true
+      },
+      "ms": 3743
+    },
+    "10_opening_create": {
+      "ok": true,
+      "detail": {
+        "header": {
+          "id": "X0ga6W4J17k9",
+          "batchNo": "SP-QC-SYS-202610-000003",
+          "warehouseId": "04YaAAjwVVVa",
+          "status": 1,
+          "remark": "2A 冒烟期初 10×10"
+        },
+        "items": [
+          {
+            "id": "57Jnb12jgxR4",
+            "itemId": "04YaAqYQzyeq",
+            "batchNo": "165326-B01",
+            "qty": 10.0,
+            "unitCost": 10.0,
+            "amount": 100.0
+          }
+        ]
+      },
+      "ms": 19
+    },
+    "11_opening_list": {
+      "ok": true,
+      "detail": {
+        "batchNo": "SP-QC-SYS-202610-000003",
+        "bodyHasBatchNo": true
+      },
+      "ms": 2401
+    },
+    "12_opening_submit": {
+      "ok": true,
+      "detail": {
+        "id": "GwKR4Rkd0yJg",
+        "approvalInstanceId": "108125960619950080",
+        "bizType": "stk.opening.post",
+        "bizId": 0,
+        "status": 1
+      },
+      "ms": 49
+    },
+    "13_approval_center": {
+      "ok": true,
+      "detail": {
+        "instanceId": "108125960619950080",
+        "nodeName": "期初过账申请：SP-QC-SYS-202610-000003（仓库负责人）",
+        "todoCount": 1
+      },
+      "ms": 3147
+    },
+    "14_opening_approve": {
+      "ok": true,
+      "detail": {
+        "finalStatus": 2,
+        "approvedActions": 3,
+        "openingStatus": 3
+      },
+      "ms": 1443
+    },
+    "15_opening_posted_list": {
+      "ok": true,
+      "detail": {
+        "batchNo": "SP-QC-SYS-202610-000003",
+        "postedVisible": true
+      },
+      "ms": 2531
+    },
+    "16_api_verify": {
+      "ok": true,
+      "detail": {
+        "balance": {
+          "itemId": "04YaAqYQzyeq",
+          "warehouseId": "04YaAAjwVVVa",
+          "qtyOnhand": 10.0,
+          "avgCost": 10.0,
+          "amount": 100.0,
+          "qtyLocked": 0.0,
+          "lastTxnAt": "2026-10-26T08:54:02.0308775+00:00"
+        },
+        "txnCount": 1,
+        "txn": {
+          "id": "ZlYLzGmp09eD",
+          "txnNo": "SP-LS-SYS-202610-000003",
+          "sourceType": 1,
+          "sourceDocNo": "SP-QC-SYS-202610-000003",
+          "sourceLineNo": 1,
+          "itemId": "04YaAqYQzyeq",
+          "warehouseId": "04YaAAjwVVVa",
+          "batchNo": "165326-B01",
+          "direction": 1,
+          "qty": 10.0,
+          "unitCost": 10.0,
+          "amount": 100.0,
+          "balanceQtyAfter": 10.0,
+          "balanceAmountAfter": 100.0,
+          "operatorId": "aPV0jVYgxx0w",
+          "occurredAt": "2026-10-26T08:54:02.0308775+00:00"
+        },
+        "batchCount": 1,
+        "batch": {
+          "itemId": "04YaAqYQzyeq",
+          "warehouseId": "04YaAAjwVVVa",
+          "batchNo": "165326-B01",
+          "qty": 10.0,
+          "avgCost": 10.0,
+          "amount": 100.0
+        }
+      },
+      "ms": 53
+    },
+    "17_ledger_page": {
+      "ok": true,
+      "detail": {
+        "visible": true,
+        "hasItemCode": true
+      },
+      "ms": 2739
+    },
+    "18_txn_page": {
+      "ok": true,
+      "detail": {
+        "visible": true,
+        "hasItemCode": true
+      },
+      "ms": 2884
+    },
+    "19_batch_page": {
+      "ok": true,
+      "detail": {
+        "batchNo": "165326-B01",
+        "visible": true
+      },
+      "ms": 5645
+    },
+    "20_cost_adjust_page": {
+      "ok": true,
+      "detail": {
+        "visible": true
+      },
+      "ms": 2707
+    },
+    "21_sql_verify": {
+      "ok": true,
+      "detail": {
+        "checks": {
+          "balanceQtyOnhand=10": true,
+          "balanceAmount=100": true,
+          "balanceAvgCost=10": true,
+          "txnDirection=1": true,
+          "txnQty=10": true,
+          "txnBalanceQtyAfter=10": true,
+          "txnSourceType=1": true,
+          "openingStatus=3": true,
+          "openingQty=10": true,
+          "openingAmount=100": true,
+          "batchStockQty=10": true,
+          "zoneCount>=1": true,
+          "locationCount>=1": true
+        },
+        "raw": {
+          "stockBatches": [
+            {
+              "amount": 100.0,
+              "avg_cost": 10.0,
+              "batch_no": "165326-B01",
+              "qty": 10.0
+            }
+          ],
+          "zones": [
+            {
+              "cnt": 1
+            }
+          ],
+          "openingItems": [
+            {
+              "amount": 100.0,
+              "unit_cost": 10.0,
+              "qty": 10.0
+            }
+          ],
+          "balances": [
+            {
+              "amount": 100.0,
+              "avg_cost": 10.0,
+              "qty_locked": 0.0,
+              "qty_onhand": 10.0
+            }
+          ],
+          "warehouse": [
+            {
+              "code": "WH-SYS-202610-000003",
+              "name": "冒烟测试仓165326",
+              "id": 108125907356483584
+            }
+          ],
+          "locations": [
+            {
+              "cnt": 1
+            }
+          ],
+          "txns": [
+            {
+              "source_type": 1,
+              "txn_no": "SP-LS-SYS-202610-000003",
+              "unit_cost": 10.0,
+              "balance_amount_after": 100.0,
+              "qty": 10.0,
+              "direction": 1,
+              "batch_no": "165326-B01",
+              "source_doc_no": "SP-QC-SYS-202610-000003",
+              "balance_qty_after": 10.0,
+              "amount": 100.0
+            }
+          ],
+          "opening": [
+            {
+              "status": 3,
+              "batch_no": "SP-QC-SYS-202610-000003",
+              "posted_at": "/Date(1793004842030)/"
+            }
+          ],
+          "item": [
+            {
+              "status": 1,
+              "batch_enabled": true,
+              "item_code": "010003",
+              "id": 108125933419888640
+            }
+          ]
+        }
+      },
+      "ms": 7014
+    }
+  },
+  "apiCalls": [
+    {
+      "method": "GET",
+      "path": "/api/portal/admin/tenants?page=1&pageSize=20&keyword=91510100MA0000000X",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/tenant/menus",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/bas/categories",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/bas/unit-groups",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/bas/units",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/warehouses",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/warehouses/04YaAAjwVVVa/zones",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/wms/warehouses/04YaAAjwVVVa/locations?zoneId=oWeRqqbXbP9o",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/wms/warehouses/04YaAAjwVVVa/zones",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/wms/warehouses/04YaAAjwVVVa/locations",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/stk/items",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/instance/108125932438421504",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/approvals/108125932438421504/approve",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/instance/108125932438421504",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/stk/items",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/stk/openings",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/stk/openings/X0ga6W4J17k9/submit",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/my-todos",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/instance/108125960619950080",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/approvals/108125960619950080/approve",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/instance/108125960619950080",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/approvals/108125960619950080/approve",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/instance/108125960619950080",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/support/approvals/108125960619950080/approve",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/support/approvals/instance/108125960619950080",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/stk/openings/X0ga6W4J17k9",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/stk/ledger?itemId=04YaAqYQzyeq&warehouseId=04YaAAjwVVVa",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/stk/txns?itemId=04YaAqYQzyeq&warehouseId=04YaAAjwVVVa",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/stk/batches?itemId=04YaAqYQzyeq&warehouseId=04YaAAjwVVVa",
+      "status": 200
+    }
+  ],
+  "sql": {
+    "stockBatches": [
+      {
+        "amount": 100.0,
+        "avg_cost": 10.0,
+        "batch_no": "165326-B01",
+        "qty": 10.0
+      }
+    ],
+    "zones": [
+      {
+        "cnt": 1
+      }
+    ],
+    "openingItems": [
+      {
+        "amount": 100.0,
+        "unit_cost": 10.0,
+        "qty": 10.0
+      }
+    ],
+    "balances": [
+      {
+        "amount": 100.0,
+        "avg_cost": 10.0,
+        "qty_locked": 0.0,
+        "qty_onhand": 10.0
+      }
+    ],
+    "warehouse": [
+      {
+        "code": "WH-SYS-202610-000003",
+        "name": "冒烟测试仓165326",
+        "id": 108125907356483584
+      }
+    ],
+    "locations": [
+      {
+        "cnt": 1
+      }
+    ],
+    "txns": [
+      {
+        "source_type": 1,
+        "txn_no": "SP-LS-SYS-202610-000003",
+        "unit_cost": 10.0,
+        "balance_amount_after": 100.0,
+        "qty": 10.0,
+        "direction": 1,
+        "batch_no": "165326-B01",
+        "source_doc_no": "SP-QC-SYS-202610-000003",
+        "balance_qty_after": 10.0,
+        "amount": 100.0
+      }
+    ],
+    "opening": [
+      {
+        "status": 3,
+        "batch_no": "SP-QC-SYS-202610-000003",
+        "posted_at": "/Date(1793004842030)/"
+      }
+    ],
+    "item": [
+      {
+        "status": 1,
+        "batch_enabled": true,
+        "item_code": "010003",
+        "id": 108125933419888640
+      }
+    ]
+  },
+  "screenshots": [
+    "00-login.png",
+    "01-workbench.png",
+    "02-menu.png",
+    "03-warehouse-list.png",
+    "04a-item-form-no-code.png",
+    "04-item-list.png",
+    "05-opening-list.png",
+    "07-approval-center.png",
+    "06-opening-created.png",
+    "08-ledger.png",
+    "09-txns.png",
+    "10-batches.png",
+    "11-cost-adjust.png"
+  ],
+  "consoleErrors": [],
+  "pageErrors": [],
+  "httpErrors": [],
+  "sqlDatabase": "qlx_dev",
+  "sqlChecks": {
+    "balanceQtyOnhand=10": true,
+    "balanceAmount=100": true,
+    "balanceAvgCost=10": true,
+    "txnDirection=1": true,
+    "txnQty=10": true,
+    "txnBalanceQtyAfter=10": true,
+    "txnSourceType=1": true,
+    "openingStatus=3": true,
+    "openingQty=10": true,
+    "openingAmount=100": true,
+    "batchStockQty=10": true,
+    "zoneCount>=1": true,
+    "locationCount>=1": true
+  },
+  "finishedAt": "2026-10-26T16:54:27",
+  "ok": true,
+  "stepSummary": {
+    "01_login": true,
+    "01b_license": true,
+    "02_menu": true,
+    "03_base_master": true,
+    "04_warehouse_create": true,
+    "05_warehouse_list": true,
+    "06_item_form_no_code": true,
+    "07_item_create": true,
+    "08_item_approve": true,
+    "09_item_list": true,
+    "10_opening_create": true,
+    "11_opening_list": true,
+    "12_opening_submit": true,
+    "13_approval_center": true,
+    "14_opening_approve": true,
+    "15_opening_posted_list": true,
+    "16_api_verify": true,
+    "17_ledger_page": true,
+    "18_txn_page": true,
+    "19_batch_page": true,
+    "20_cost_adjust_page": true,
+    "21_sql_verify": true
+  },
+  "extraEvidence": [
+    {
+      "file": "09-txns-quantity.png",
+      "producedBy": "_scripts/txns_quantity_shot.py",
+      "note": "出入库流水表横向滚动后可见 数量10 / 单价10.00 / 金额100.00 / 结存数量10 / 结存金额100.00"
+    }
+  ],
+  "environmentFindings": [
+    "首轮冒烟（本目录脚本首跑）租户 licensedModules=[portal,bas,support]，缺 wms/stk：GET/POST /api/wms/warehouses 与 /api/stk/items 均返回 404 MODULE_NOT_LICENSED，侧边栏无仓库档案/期初建账等菜单。",
+    "处置：用 identityToken 调门户 PUT /api/portal/admin/tenants/{id}/modules 补齐 wms/stk（仅数据授权，未改任何代码），随后重新登录刷新 tenantToken，主路径全部通过。",
+    "侧边栏分组名来自 por_navigation_groups.business=业务管理（module_codes=pur,sal,wms,stk,ctr,prj,eqp），因此不显示模块 DisplayName 物流管理/商品管理；模块菜单项本身完整可见。"
+  ]
+}

@@ -13,7 +13,8 @@ import QlxPagePanel from '@/components/crud/QlxPagePanel.vue'
 import QlxSearchBar from '@/components/crud/QlxSearchBar.vue'
 import type { SearchField } from '@/components/crud/QlxSearchBar.vue'
 import { useCrudTable } from '@/composables/useCrudTable'
-import { ApiError, createTenant, fetchTenants, toggleTenantStatus } from '@/api/admin'
+import { createTenant, fetchTenants, toggleTenantStatus } from '@/api/admin'
+import { ApiError } from '@/api/adapters/request'
 import {
   databaseModeLabels,
   databaseModeTones,

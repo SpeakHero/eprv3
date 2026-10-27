@@ -8,6 +8,7 @@
  */
 
 using Microsoft.EntityFrameworkCore;
+
 using Qlx.Abstractions.Audit;
 using Qlx.BuildingBlocks.Ids;
 
@@ -31,8 +32,8 @@ public sealed class EfCoreAuditService(IDbContextFactory<AuditDbContext> factory
     /// <inheritdoc />
     public async Task CaptureChangeAsync(AuditLogEntry entry, CancellationToken cancellationToken)
     {
-        await using var db = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
-        db.AuditLogs.Add(new AuditLogEntity
+        await using AuditDbContext db = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        _ = db.AuditLogs.Add(new AuditLogEntity
         {
             EventId = _snowflake.NextId(),
             EntityType = entry.EntityType,
@@ -44,14 +45,14 @@ public sealed class EfCoreAuditService(IDbContextFactory<AuditDbContext> factory
             ChangedAt = entry.ChangedAt,
             TenantId = entry.TenantId,
         });
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        _ = await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public async Task CaptureOperationAsync(OperationLogEntry entry, CancellationToken cancellationToken)
     {
-        await using var db = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
-        db.OperationLogs.Add(new OperationLogEntity
+        await using AuditDbContext db = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        _ = db.OperationLogs.Add(new OperationLogEntity
         {
             EventId = _snowflake.NextId(),
             ModuleCode = entry.ModuleCode,
@@ -64,7 +65,7 @@ public sealed class EfCoreAuditService(IDbContextFactory<AuditDbContext> factory
             TargetId = entry.TargetId,
             Metadata = entry.Metadata,
         });
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        _ = await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -72,22 +73,40 @@ public sealed class EfCoreAuditService(IDbContextFactory<AuditDbContext> factory
         long tenantId, CancellationToken cancellationToken, string? entityType = null, long? entityId = null, string? changedBy = null,
         DateTimeOffset? from = null, DateTimeOffset? toTime = null)
     {
-        await using var db = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await using AuditDbContext db = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         // 注意：AuditDbContext 刻意不继承 TenantDbContext（§8.11 循环依赖豁免），
         // 故无全局 TenantId 过滤能力，必须在审计查询中手动按 TenantId 隔离记录。
         IQueryable<AuditLogEntity> q = db.AuditLogs.AsNoTracking().Where(e => e.TenantId == tenantId);
 
-        if (!string.IsNullOrWhiteSpace(entityType)) q = q.Where(e => e.EntityType == entityType);
-        if (entityId.HasValue) q = q.Where(e => e.EntityId == entityId.Value);
-        if (!string.IsNullOrWhiteSpace(changedBy)) q = q.Where(e => e.ChangedBy == changedBy);
-        if (from.HasValue) q = q.Where(e => e.ChangedAt >= from.Value);
-        if (toTime.HasValue) q = q.Where(e => e.ChangedAt <= toTime.Value);
+        if (!string.IsNullOrWhiteSpace(entityType))
+        {
+            q = q.Where(e => e.EntityType == entityType);
+        }
 
-        return (await q.OrderByDescending(e => e.ChangedAt).ToListAsync(cancellationToken).ConfigureAwait(false))
+        if (entityId.HasValue)
+        {
+            q = q.Where(e => e.EntityId == entityId.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(changedBy))
+        {
+            q = q.Where(e => e.ChangedBy == changedBy);
+        }
+
+        if (from.HasValue)
+        {
+            q = q.Where(e => e.ChangedAt >= from.Value);
+        }
+
+        if (toTime.HasValue)
+        {
+            q = q.Where(e => e.ChangedAt <= toTime.Value);
+        }
+
+        return [.. (await q.OrderByDescending(e => e.ChangedAt).ToListAsync(cancellationToken).ConfigureAwait(false))
             .Select(e => new AuditLogEntry(
                 e.EventId, e.EntityType, e.EntityId, e.Operation,
-                e.OldValues, e.NewValues, e.ChangedBy, e.ChangedAt, e.TenantId))
-            .ToList();
+                e.OldValues, e.NewValues, e.ChangedBy, e.ChangedAt, e.TenantId))];
     }
 
     /// <inheritdoc />
@@ -95,21 +114,39 @@ public sealed class EfCoreAuditService(IDbContextFactory<AuditDbContext> factory
         long tenantId, CancellationToken cancellationToken, string? moduleCode = null, string? operation = null, string? operatedBy = null,
         DateTimeOffset? from = null, DateTimeOffset? toTime = null)
     {
-        await using var db = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await using AuditDbContext db = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         // 同上：AuditDbContext 无全局 TenantId 过滤，必须手动隔离。
         IQueryable<OperationLogEntity> q = db.OperationLogs.AsNoTracking().Where(e => e.TenantId == tenantId);
 
-        if (!string.IsNullOrWhiteSpace(moduleCode)) q = q.Where(e => e.ModuleCode == moduleCode);
-        if (!string.IsNullOrWhiteSpace(operation)) q = q.Where(e => e.Operation == operation);
-        if (!string.IsNullOrWhiteSpace(operatedBy)) q = q.Where(e => e.OperatedBy == operatedBy);
-        if (from.HasValue) q = q.Where(e => e.OperatedAt >= from.Value);
-        if (toTime.HasValue) q = q.Where(e => e.OperatedAt <= toTime.Value);
+        if (!string.IsNullOrWhiteSpace(moduleCode))
+        {
+            q = q.Where(e => e.ModuleCode == moduleCode);
+        }
 
-        return (await q.OrderByDescending(e => e.OperatedAt).ToListAsync(cancellationToken).ConfigureAwait(false))
+        if (!string.IsNullOrWhiteSpace(operation))
+        {
+            q = q.Where(e => e.Operation == operation);
+        }
+
+        if (!string.IsNullOrWhiteSpace(operatedBy))
+        {
+            q = q.Where(e => e.OperatedBy == operatedBy);
+        }
+
+        if (from.HasValue)
+        {
+            q = q.Where(e => e.OperatedAt >= from.Value);
+        }
+
+        if (toTime.HasValue)
+        {
+            q = q.Where(e => e.OperatedAt <= toTime.Value);
+        }
+
+        return [.. (await q.OrderByDescending(e => e.OperatedAt).ToListAsync(cancellationToken).ConfigureAwait(false))
             .Select(e => new OperationLogEntry(
                 e.EventId, e.ModuleCode, e.Operation, e.Description,
-                e.OperatedBy, e.OperatedAt, e.TenantId, e.TargetType, e.TargetId, e.Metadata))
-            .ToList();
+                e.OperatedBy, e.OperatedAt, e.TenantId, e.TargetType, e.TargetId, e.Metadata))];
     }
 
     /// <inheritdoc />
@@ -118,16 +155,18 @@ public sealed class EfCoreAuditService(IDbContextFactory<AuditDbContext> factory
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(operatedBy);
 
-        await using var db = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
+        await using AuditDbContext db = await _factory.CreateDbContextAsync(cancellationToken).ConfigureAwait(false);
         // 审计库为跨租户集中存储，此处按操作人维度查询（门户管理端平台级审计视图）。
         IQueryable<OperationLogEntity> q = db.OperationLogs.AsNoTracking().Where(e => e.OperatedBy == operatedBy);
 
-        if (!string.IsNullOrWhiteSpace(moduleCode)) q = q.Where(e => e.ModuleCode == moduleCode);
+        if (!string.IsNullOrWhiteSpace(moduleCode))
+        {
+            q = q.Where(e => e.ModuleCode == moduleCode);
+        }
 
-        return (await q.OrderByDescending(e => e.OperatedAt).Take(take).ToListAsync(cancellationToken).ConfigureAwait(false))
+        return [.. (await q.OrderByDescending(e => e.OperatedAt).Take(take).ToListAsync(cancellationToken).ConfigureAwait(false))
             .Select(e => new OperationLogEntry(
                 e.EventId, e.ModuleCode, e.Operation, e.Description,
-                e.OperatedBy, e.OperatedAt, e.TenantId, e.TargetType, e.TargetId, e.Metadata))
-            .ToList();
+                e.OperatedBy, e.OperatedAt, e.TenantId, e.TargetType, e.TargetId, e.Metadata))];
     }
 }

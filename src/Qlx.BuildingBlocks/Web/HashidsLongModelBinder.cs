@@ -8,6 +8,7 @@
  */
 
 using Microsoft.AspNetCore.Mvc.ModelBinding;
+
 using Qlx.BuildingBlocks.Ids;
 
 namespace Qlx.BuildingBlocks.Web;
@@ -16,16 +17,10 @@ namespace Qlx.BuildingBlocks.Web;
 /// 业务 Id 模型绑定器：把对外混淆字符串解码为真实 <see cref="long"/>（兼容纯数字入参）。
 /// 非法输入写入 <see cref="ModelBindingContext.ModelState"/>，统一由全局异常/校验管线返回 400。
 /// </summary>
-public sealed class HashidsLongModelBinder : IModelBinder
+/// <remarks>创建绑定器实例。</remarks>
+/// <param name="isNullable">目标类型是否为 <see cref="long"/>?。</param>
+public sealed class HashidsLongModelBinder(bool isNullable) : IModelBinder
 {
-    private readonly bool _isNullable;
-
-    /// <summary>创建绑定器实例。</summary>
-    /// <param name="isNullable">目标类型是否为 <see cref="long"/>?。</param>
-    public HashidsLongModelBinder(bool isNullable)
-    {
-        _isNullable = isNullable;
-    }
 
     /// <inheritdoc />
     public Task BindModelAsync(ModelBindingContext bindingContext)
@@ -61,7 +56,7 @@ public sealed class HashidsLongModelBinder : IModelBinder
     /// <summary>缺省值处理：可空类型绑定 null，非可空类型记录模型错误。</summary>
     private void BindMissing(ModelBindingContext bindingContext)
     {
-        if (_isNullable)
+        if (isNullable)
         {
             bindingContext.Result = ModelBindingResult.Success(null);
             return;

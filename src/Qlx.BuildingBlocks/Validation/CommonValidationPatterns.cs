@@ -4,7 +4,7 @@
  * 版本：1.0.0 beta
  * 创建时间：2026-10-23 20:05:00 +08:00 中国标准时间 星期五
  * 修改时间：2026-10-23 20:05:00 +08:00 中国标准时间 星期五
- * 描述：通用校验正则公共层——跨模块通用格式校验（手机号/邮箱/身份证/IPv4/URL）统一定义，全部源生成预编译
+ * 描述：通用校验正则公共层——跨模块通用格式校验（手机号/邮箱/身份证/IPv4/URL/统一社会信用代码）统一定义，全部源生成预编译
  */
 
 using System.Text.RegularExpressions;
@@ -16,6 +16,7 @@ namespace Qlx.BuildingBlocks.Validation;
 /// <para>业务代码禁止各自重复定义通用格式正则，统一经本类引用；
 /// DataAnnotations 校验场景使用 <see cref="RegexValidationAttribute"/> 派生特性。</para>
 /// <para>匹配语义约定：null / 空白输入的放行与否由 <c>IsXxx</c> 方法逐一注明；所有模式均为整串匹配（含 ^ $ 锚点）。</para>
+/// <para>当前覆盖：中国大陆手机号 / 邮箱 / 中国大陆身份证号 / IPv4 / URL / 统一社会信用代码。</para>
 /// </summary>
 public static partial class CommonValidationPatterns
 {
@@ -33,6 +34,9 @@ public static partial class CommonValidationPatterns
 
     /// <summary>URL（仅 http/https：协议头 + 域名段 + 可选端口 + 可选路径，不含空白）。</summary>
     public static Regex Url => UrlRegex();
+
+    /// <summary>统一社会信用代码（18 位大写字母或数字，与门户租户落库既有规则一致）。</summary>
+    public static Regex CnUscc => CnUsccRegex();
 
     /// <summary>判定是否为中国大陆手机号；null / 空白返回 false。</summary>
     public static bool IsCnMobilePhone(string? value) =>
@@ -54,6 +58,10 @@ public static partial class CommonValidationPatterns
     public static bool IsUrl(string? value) =>
         !string.IsNullOrWhiteSpace(value) && Url.IsMatch(value);
 
+    /// <summary>判定是否为统一社会信用代码；null / 空白返回 false。</summary>
+    public static bool IsCnUscc(string? value) =>
+        !string.IsNullOrWhiteSpace(value) && CnUscc.IsMatch(value);
+
     [GeneratedRegex(@"^1\d{10}$", RegexOptions.CultureInvariant, 200)]
     private static partial Regex CnMobilePhoneRegex();
 
@@ -68,4 +76,7 @@ public static partial class CommonValidationPatterns
 
     [GeneratedRegex(@"^https?://[\w\-]+(\.[\w\-]+)*(:\d{1,5})?(/[^\s]*)?$", RegexOptions.CultureInvariant, 200)]
     private static partial Regex UrlRegex();
+
+    [GeneratedRegex(@"^[0-9A-Z]{18}$", RegexOptions.CultureInvariant, 200)]
+    private static partial Regex CnUsccRegex();
 }

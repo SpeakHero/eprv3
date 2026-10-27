@@ -1,0 +1,10 @@
+{
+  "Qlx": {
+    "Stk": {
+      "_comment": "Stk 模块技术参数（业务阈值不落配置，统一走 por_parameters）；CacheTtlSeconds 为商品档案读穿缓存基线 TTL（秒），CacheNullTtlSeconds 为空值缓存 TTL（秒），CacheJitterPercent 为 TTL 抖动百分比",
+      "CacheTtlSeconds": 300,
+      "CacheNullTtlSeconds": 30,
+      "CacheJitterPercent": 15
+    }
+  }
+}

@@ -207,6 +207,39 @@ public sealed class SupportApprovalServiceTests
     }
 
     [Fact]
+    public async Task StartApprovalExplicitCodeWinsOverSharedBizType()
+    {
+        var (service, db, _, _) = Build();
+
+        var instanceId = await service.StartApprovalAsync(new StartApprovalRequest(
+            ApprovalDefinitionCode: "flow.wms.transfer.cross", BizType: "wms.transfer", BizId: "T-1",
+            BizNo: "DB-T-1", InitiatorUserId: Initiator, Title: "跨公司调拨 DB-T-1",
+            Description: null, BizData: BizData(100)), TestContext.Current.CancellationToken);
+
+        var instance = await db.Instances.AsNoTracking().SingleAsync(
+            i => i.Id == ParseId(instanceId), TestContext.Current.CancellationToken);
+        // 同 biz_type 挂「同公司 / 跨公司」两条启用流程时，按显式定义编码锁定跨公司流程
+        Assert.Equal("flow.wms.transfer.cross", instance.DefCode);
+        Assert.Equal(3, await db.FlowNodes.AsNoTracking()
+            .CountAsync(n => n.DefId == instance.DefId, TestContext.Current.CancellationToken));
+        var task = await RequireTaskAsync(db, instance.Id, "from_wh_leader", Admin1);
+        Assert.Equal(ApprovalTaskStatus.Pending, task.Status);
+    }
+
+    [Fact]
+    public async Task StartApprovalExplicitCodeBizTypeMismatchThrowsConflict()
+    {
+        var (service, _, _, _) = Build();
+
+        await Assert.ThrowsAsync<ConflictException>(() => service.StartApprovalAsync(
+            new StartApprovalRequest(
+                ApprovalDefinitionCode: "flow.wms.transfer.cross", BizType: "pur_request", BizId: "PR-M",
+                BizNo: "CG-PR-M", InitiatorUserId: Initiator, Title: "单据类型不一致",
+                Description: null, BizData: BizData(100)),
+            TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task ApproveUnresolvableFieldUserNodeThrowsConflict()
     {
         var (service, _, _, _) = Build();

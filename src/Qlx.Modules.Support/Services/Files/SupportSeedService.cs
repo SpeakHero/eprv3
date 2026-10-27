@@ -3,9 +3,11 @@
  * 作者：SpeakHero（491960352@qq.com）
  * 版本：1.0.0 beta
  * 创建时间：2026-10-23 00:35:00 +08:00 中国标准时间 星期五
+ * 修改时间：2026-10-26 15:00:00 +08:00 中国标准时间 星期一
  * 描述：租户种子服务（幂等）——文件域：7 业务域目录骨架 + 默认 ACL 模板 + 默认归类规则；
  *       信息中心：8 类消息模板（InApp 渠道，编码即幂等键）；
- *       审批中心：4 个默认审批流程（条件分支 expr_json 经条件引擎 Parse 产出）
+ *       审批中心：22 个默认审批流程（4 通用 + 7 Bas 主数据 + 11 Stk/Wms 库存物流，
+ *       条件分支 expr_json 经条件引擎 Parse 产出）
  */
 
 using System.Text.Json;
@@ -23,7 +25,8 @@ namespace Qlx.Modules.Support.Services.Files;
 /// <summary>
 /// 租户种子服务（幂等）。文件域：目录骨架 + 默认 ACL 模板 + 默认归类规则；
 /// 信息中心：8 类消息模板（InApp 渠道各一份，write-through 兜底渠道）；
-/// 审批中心：4 个默认流程（采购申请 / 费用报销 / 合同评审 / 劳务工资表）。
+/// 审批中心：22 个默认流程（采购申请 / 费用报销 / 合同评审 / 劳务工资表 + 7 个 Bas 主数据流程
+/// + 11 个 Stk/Wms 库存物流流程）。
 /// </summary>
 public sealed partial class SupportSeedService(
     SupportTenantDbContext db,
@@ -211,9 +214,12 @@ public sealed partial class SupportSeedService(
         IReadOnlyList<ApprovalNodeSeed> Nodes, IReadOnlyList<ApprovalBranchSeed> Branches);
 
     /// <summary>
-    /// 4 个默认审批流程。金额阈值（50000 / 200000 / 5000）为示例默认值，
+    /// 22 个默认审批流程（4 通用 + 7 Bas 主数据 + 11 Stk/Wms 库存物流）。金额阈值（50000 / 200000 / 5000）为示例默认值，
     /// 正式值待 por_parameters 参数域挂接（2F 管控域统一迁参）；
     /// 每条来源线均含兜底分支（无条件线直接以兜底表达），保证求值必达终态（R3）。
+    /// Bas 7 条（D7）：审批链按《模块需求 01-基础信息中心》§4 简化为 1~2 节点，
+    /// 节点审批人一律 ROLE=admin（BasApprovalApproverSource 当前仅解析 admin/member 与 DEPT_LEADER，避免实例卡死）；
+    /// Stk/Wms 11 条（M-3.2 spec §8）同样统一 ROLE=admin，节点按会签链顺序（OrSign 为同层可选，链路顺序由分支表达）。
     /// </summary>
     private static readonly ApprovalFlowSeed[] s_approvalFlows =
     [
@@ -270,10 +276,227 @@ public sealed partial class SupportSeedService(
                 new("site_manager", "role_admin", null, 0),
                 new("role_admin", "", null, 0),
             ]),
+
+        // ======= Bas 主数据（阶段三，D7）：1~2 节点，审批人统一 ROLE=admin =======
+
+        new("flow.bas.org.adjust", "组织架构调整审批", "bas.org.adjust",
+            [
+                new("hq_hr_leader", "集团人力资源负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+                new("group_gm", "集团总经理", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 48, 20),
+            ],
+            [
+                new("hq_hr_leader", "group_gm", null, 0),
+                new("group_gm", "", null, 0),
+            ]),
+
+        new("flow.bas.supplier.admission", "供应商准入审批", "bas.supplier.admission",
+            [
+                new("purchase_leader", "采购负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+                new("subsidiary_gm", "子公司总经理", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 48, 20),
+            ],
+            [
+                new("purchase_leader", "subsidiary_gm", null, 0),
+                new("subsidiary_gm", "", null, 0),
+            ]),
+
+        new("flow.bas.supplier.bank.change", "供应商银行/开票信息变更审批", "bas.supplier.bank.change",
+            [
+                new("purchase_leader", "采购负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+                new("finance_leader", "财务负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 48, 20),
+            ],
+            [
+                new("purchase_leader", "finance_leader", null, 0),
+                new("finance_leader", "", null, 0),
+            ]),
+
+        new("flow.bas.customer.admission", "客户准入审批", "bas.customer.admission",
+            [
+                new("sales_leader", "销售负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+                new("subsidiary_gm", "子公司总经理", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 48, 20),
+            ],
+            [
+                new("sales_leader", "subsidiary_gm", null, 0),
+                new("subsidiary_gm", "", null, 0),
+            ]),
+
+        new("flow.bas.customer.credit.adjust", "客户信用额度调整审批", "bas.customer.credit.adjust",
+            [
+                new("sales_leader", "销售负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+                new("finance_leader", "财务负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 48, 20),
+            ],
+            [
+                new("sales_leader", "finance_leader", null, 0),
+                new("finance_leader", "", null, 0),
+            ]),
+
+        new("flow.bas.category.disable", "商品分类停用审批", "bas.category.disable",
+            [
+                new("data_admin", "基础数据管理员", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+                new("operation_leader", "集团运营负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 48, 20),
+            ],
+            [
+                new("data_admin", "operation_leader", null, 0),
+                new("operation_leader", "", null, 0),
+            ]),
+
+        new("flow.bas.position.overstaff", "编制调整/超编入职审批", "bas.position.overstaff",
+            [
+                new("subsidiary_gm", "子公司总经理", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+                new("hq_hr_leader", "集团人力资源负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 48, 20),
+            ],
+            [
+                new("subsidiary_gm", "hq_hr_leader", null, 0),
+                new("hq_hr_leader", "", null, 0),
+            ]),
+
+        // ======= Stk / Wms 库存物流（阶段三，M-3.2 spec §8）：节点审批人统一 ROLE=admin =======
+
+        new("flow.stk.item.create", "商品新建审批", "stk.item.create",
+            [
+                new("data_admin", "基础数据管理员", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+            ],
+            [
+                new("data_admin", "", null, 0),
+            ]),
+        new("flow.stk.item.keyfield.change", "商品关键属性变更审批", "stk.item.keyfield.change",
+            [
+                new("data_admin", "基础数据管理员", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+                new("finance_leader", "财务负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 48, 20),
+            ],
+            [
+                new("data_admin", "finance_leader", null, 0),
+                new("finance_leader", "", null, 0),
+            ]),
+        new("flow.stk.item.disable", "商品停用审批", "stk.item.disable",
+            [
+                new("item_owner", "商品负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+                new("operation_leader", "集团运营负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 48, 20),
+            ],
+            [
+                new("item_owner", "operation_leader", null, 0),
+                new("operation_leader", "", null, 0),
+            ]),
+        new("flow.stk.opening.post", "期初过账审批", "stk.opening.post",
+            [
+                new("warehouse_leader", "仓库负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+                new("finance_leader", "财务负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 48, 20),
+                new("operation_leader", "集团运营负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 72, 30),
+            ],
+            [
+                new("warehouse_leader", "finance_leader", null, 0),
+                new("finance_leader", "operation_leader", null, 0),
+                new("operation_leader", "", null, 0),
+            ]),
+        new("flow.stk.cost.adjust", "成本调整审批", "stk.cost.adjust",
+            [
+                new("warehouse_item_leader", "仓库/商品负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+                new("finance_leader", "财务负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 48, 20),
+            ],
+            [
+                new("warehouse_item_leader", "finance_leader", null, 0),
+                new("finance_leader", "", null, 0),
+            ]),
+        new("flow.stk.cost.adjust.large", "成本调整（大额）审批", "stk.cost.adjust",
+            [
+                new("warehouse_item_leader", "仓库/商品负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+                new("finance_leader", "财务负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 48, 20),
+                new("group_vp", "集团分管副总", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 72, 30),
+            ],
+            [
+                new("warehouse_item_leader", "finance_leader", null, 0),
+                new("finance_leader", "group_vp", null, 0),
+                new("group_vp", "", null, 0),
+            ]),
+        new("flow.wms.outbound.large", "大额出库审批", "wms.outbound.large",
+            [
+                new("warehouse_leader", "仓库负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+                new("dept_leader", "部门负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 48, 20),
+            ],
+            [
+                new("warehouse_leader", "dept_leader", null, 0),
+                new("dept_leader", "", null, 0),
+            ]),
+        new("flow.wms.transfer.internal", "同公司调拨审批", "wms.transfer",
+            [
+                new("from_wh_leader", "调出仓库负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+                new("to_wh_leader", "调入仓库负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 48, 20),
+            ],
+            [
+                new("from_wh_leader", "to_wh_leader", null, 0),
+                new("to_wh_leader", "", null, 0),
+            ]),
+        new("flow.wms.transfer.cross", "跨公司调拨审批", "wms.transfer",
+            [
+                new("from_wh_leader", "调出仓库负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+                new("to_wh_leader", "调入仓库负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 48, 20),
+                new("operation_leader", "集团运营负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 72, 30),
+            ],
+            [
+                new("from_wh_leader", "to_wh_leader", null, 0),
+                new("to_wh_leader", "operation_leader", null, 0),
+                new("operation_leader", "", null, 0),
+            ]),
+        new("flow.wms.inventory.adjust", "盘盈盘亏审批", "wms.inventory.adjust",
+            [
+                new("warehouse_leader", "仓库负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+                new("finance_leader", "财务负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 48, 20),
+            ],
+            [
+                new("warehouse_leader", "finance_leader", null, 0),
+                new("finance_leader", "", null, 0),
+            ]),
+        new("flow.wms.warehouse.disable", "仓库停用审批", "wms.warehouse.disable",
+            [
+                new("warehouse_leader", "仓库负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 24, 10),
+                new("operation_leader", "集团运营负责人", ApprovalApproverTypes.Role, "admin",
+                    ApprovalSignMode.OrSign, 48, 20),
+            ],
+            [
+                new("warehouse_leader", "operation_leader", null, 0),
+                new("operation_leader", "", null, 0),
+            ]),
     ];
 
     /// <summary>
-    /// 确保当前租户的 4 个默认审批流程齐备（幂等：按定义编码判存，仅补缺失项，直接以 Enabled 状态种入）。
+    /// 确保当前租户的 22 个默认审批流程齐备（幂等：按定义编码判存，仅补缺失项，直接以 Enabled 状态种入；
+    /// 已存在 / 已停用的定义一律跳过，不覆盖租户自定义）。
     /// 条件分支 expr_json 经条件表达式引擎 Parse 产出 AST JSON，运行期 <c>ConditionExpression.FromJson</c> 反序列化求值（R3）。
     /// </summary>
     /// <param name="tenantId">租户 Id。</param>

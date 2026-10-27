@@ -175,10 +175,9 @@ public sealed class HashidsLongModelBinderTests
     }
 
     private static string[] ErrorMessages(ModelBindingContext context)
-        => context.ModelState.Values
+        => [.. context.ModelState.Values
             .SelectMany(entry => entry.Errors)
-            .Select(error => error.ErrorMessage)
-            .ToArray();
+            .Select(error => error.ErrorMessage)];
 
     private static DefaultModelBindingContext CreateContext(string modelName, string? rawValue, Type modelType)
         => new DefaultModelBindingContext

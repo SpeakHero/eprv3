@@ -6,38 +6,11 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import type { FormInstance, FormRules } from 'element-plus'
+import { isFieldRequired } from './form-field-rules'
+import type { FormField, FormValue } from './form-field-rules'
 
-export interface FormFieldOption {
-  label: string
-  value: string | number
-}
-
-/** 字段值类型（多选下拉为 string[]）。 */
-export type FormValue = string | number | boolean | string[]
-
-export interface FormField {
-  prop: string
-  label: string
-  type: 'input' | 'textarea' | 'select' | 'number' | 'switch'
-  placeholder?: string
-  required?: boolean
-  options?: FormFieldOption[]
-  /** 下拉是否多选（值为 string[]）。 */
-  multiple?: boolean
-  /** 下拉是否可搜索。 */
-  filterable?: boolean
-  /** 输入提示（表单项下方灰字）。 */
-  hint?: string
-  /** 打开时的初始值。 */
-  defaultValue?: FormValue
-  /** 正则校验（input 型）。 */
-  pattern?: RegExp
-  patternMessage?: string
-  maxlength?: number
-  disabled?: boolean
-  /** 是否独占整行（默认单字段半宽）。 */
-  full?: boolean
-}
+// 字段契约统一定义在 form-field-rules.ts，此处保留 re-export 兼容既有引用
+export type { FormField, FormFieldOption, FormValue } from './form-field-rules'
 
 const props = withDefaults(
   defineProps<{
@@ -93,9 +66,11 @@ watch(
 
 const rules = computed<FormRules>(() => {
   const result: FormRules = {}
+  // 读取表单值快照，使条件必填（requiredWhen）随表单值变化重算，Element Plus 会在 rules 变化后重校验
+  const values: Record<string, FormValue> = { ...form }
   for (const field of props.fields) {
     const fieldRules: FormRules[string] = []
-    if (field.required) {
+    if (isFieldRequired(field, values)) {
       fieldRules.push({
         required: true,
         message: `${field.label}不能为空`,
@@ -180,6 +155,16 @@ async function onSubmit(): Promise<void> {
             <el-switch
               v-else-if="field.type === 'switch'"
               v-model="form[field.prop] as boolean"
+            />
+            <el-date-picker
+              v-else-if="field.type === 'date'"
+              v-model="form[field.prop] as string"
+              type="date"
+              value-format="YYYY-MM-DD"
+              :placeholder="field.placeholder ?? `请选择${field.label}`"
+              :disabled="field.disabled"
+              clearable
+              style="width: 100%"
             />
             <el-input-number
               v-else-if="field.type === 'number'"

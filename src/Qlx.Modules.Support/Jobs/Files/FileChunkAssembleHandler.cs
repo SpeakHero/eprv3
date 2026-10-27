@@ -188,7 +188,7 @@ public sealed partial class FileChunkAssembleHandler(
         var keys = raw switch
         {
             IReadOnlyList<string> list => list.ToList(),
-            IEnumerable<string> sequence => sequence.ToList(),
+            IEnumerable<string> sequence => [.. sequence],
             string single => [single],
             _ => throw new ValidationException(FileJobParams.ChunkKeys,
                 $"任务 {context.TaskCode} 参数 {FileJobParams.ChunkKeys} 必须为字符串集合"),

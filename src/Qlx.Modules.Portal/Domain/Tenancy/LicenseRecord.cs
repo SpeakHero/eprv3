@@ -60,7 +60,7 @@ public sealed class LicenseRecord : Qlx.Abstractions.Domain.AuditableEntity
     public string OperatorName { get; private init; } = string.Empty;
 
     /// <summary>变更备注。</summary>
-    [MaxLength(512)]
+    [MaxLength(PortalConstants.Validation.MaxLicenseRemarkLength)]
     public string Remark { get; private init; } = string.Empty;
 
     /// <summary>变更时间（UTC）。</summary>

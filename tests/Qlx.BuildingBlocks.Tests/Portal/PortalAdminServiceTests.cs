@@ -8,6 +8,7 @@
  */
 
 using System.Collections.Immutable;
+using System.ComponentModel.DataAnnotations;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -22,11 +23,18 @@ using Qlx.BuildingBlocks.Ids;
 using Qlx.BuildingBlocks.MultiTenancy;
 using Qlx.BuildingBlocks.Numbering;
 using Qlx.BuildingBlocks.Numbering.Pinyin;
+using Qlx.Modules.Portal.Auth;
 using Qlx.Modules.Portal.Domain.Identity;
 using Qlx.Modules.Portal.Domain.Tenancy;
 using Qlx.Modules.Portal.Dtos;
 using Qlx.Modules.Portal.Repositories;
 using Qlx.Modules.Portal.Services;
+
+// TenantMemberRow 在 Auth / Repositories 均有定义，本文件仅消费仓储行类型
+using TenantMemberRow = Qlx.Modules.Portal.Repositories.TenantMemberRow;
+
+// 业务校验异常与 DataAnnotations 同名，本文件统一指业务异常
+using ValidationException = Qlx.Abstractions.Exceptions.ValidationException;
 
 namespace Qlx.BuildingBlocks.Tests.Portal;
 
@@ -56,6 +64,13 @@ internal sealed class StubIdObfuscator : IIdObfuscator
             && obfuscated.StartsWith("pub-", StringComparison.Ordinal)
             && long.TryParse(obfuscated.AsSpan(4), out id);
     }
+}
+
+/// <summary>桩服务容器：仅解析 QlxAuthOptions（供 IValidatableObject 在验证管线外复现 MVC 注入行为）。</summary>
+internal sealed class StubOptionsServiceProvider(QlxAuthOptions options) : IServiceProvider
+{
+    public object? GetService(Type serviceType)
+        => serviceType == typeof(IOptions<QlxAuthOptions>) ? Options.Create(options) : null;
 }
 
 /// <summary>桩租户数据库路由：记录预热调用次数。</summary>
@@ -720,18 +735,22 @@ public sealed class PortalAdminServiceTests
     }
 
     [Fact]
-    public async Task ResetPasswordRejectsWeakPassword()
+    public void ResetPasswordRejectsWeakPassword()
     {
-        Harness h = CreateHarness();
-        using CancellationTokenSource cts = new();
-        PortalUser user = new("13800000011", "王五");
-        user.AssignId(710000000000001204);
-        h.UserRepo.Users.Add(user);
+        // 复杂度校验位于模型验证层（ResetPortalUserPasswordRequest.IValidatableObject 按 QlxAuthOptions 配置执行），服务层不再重复校验
+        ResetPortalUserPasswordRequest request = new() { NewPassword = "abcdefgh" };
+        ValidationContext context = new(
+            request,
+            serviceProvider: new StubOptionsServiceProvider(new QlxAuthOptions()),
+            items: null);
 
-        // 纯字母：不满足「同时含字母与数字」
-        _ = await Assert.ThrowsAsync<ValidationException>(() => h.UserService.ResetPasswordAsync(
-            $"pub-{user.Id}", new ResetPortalUserPasswordRequest { NewPassword = "abcdefgh" }, cts.Token));
-        Assert.Null(user.PasswordHash);
+        List<ValidationResult> results = [];
+        bool valid = Validator.TryValidateObject(request, context, results, validateAllProperties: true);
+
+        Assert.False(valid);
+        // 纯字母：不满足「密码必须包含数字」（默认配置 MinPasswordLength=8 已满足）
+        Assert.Contains(results, r => r.MemberNames.Contains(nameof(ResetPortalUserPasswordRequest.NewPassword))
+            && r.ErrorMessage == "新密码必须包含数字");
     }
 
     [Fact]
@@ -796,7 +815,7 @@ public sealed class PortalAdminServiceTests
         tenant.SetDatabase(database);
         h.TenantRepo.Tenants.Add(tenant);
 
-        PortalPagedResult<PortalTenantItem> page = await h.TenantService.QueryAsync(new PortalTenantQueryRequest(), cts.Token);
+        PagedResult<PortalTenantItem> page = await h.TenantService.QueryAsync(new PortalTenantQueryRequest(), cts.Token);
 
         PortalTenantItem item = Assert.Single(page.Items);
         Assert.Equal("Isolated", item.DatabaseMode);

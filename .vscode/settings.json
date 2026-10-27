@@ -1,4 +1,21 @@
-﻿{
-  "dotnet.server.useOmnisharp": false
+{
+  "dotnet.server.useOmnisharp": false,
+  "sqltools.connections": [
+    {
+      "connectionTimeout": 15,
+      "mssqlOptions": {
+        "appName": "SQLTools",
+        "useUTC": true,
+        "encrypt": true,
+        "trustServerCertificate": false
+      },
+      "ssh": "Disabled",
+      "previewLimit": 50,
+      "server": "localhost",
+      "driver": "MSSQL",
+      "connectString": "Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=master;Integrated Security=True;Connect Timeout=30;Encrypt=True;Trust Server Certificate=False;Application Intent=ReadWrite;Multi Subnet Failover=False;Command Timeout=30",
+      "name": "localdb"
+    }
+  ]
 }
 

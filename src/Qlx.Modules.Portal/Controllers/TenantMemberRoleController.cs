@@ -9,9 +9,7 @@
  */
 
 using System.Net.Mime;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenIddict.Validation.AspNetCore;
 using Qlx.Abstractions.Exceptions;
 using Qlx.BuildingBlocks.Api;
 using Qlx.Modules.Portal.Auth;
@@ -24,7 +22,6 @@ namespace Qlx.Modules.Portal.Controllers;
 /// <para>路由参数不使用 <c>:long</c> 约束：tenantId 为 Hashids 混淆串，加约束会导致 404。</para>
 /// </summary>
 [ApiController]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
 [Route("api/portal/tenants")]
 public sealed class TenantMemberRoleController(ITenantMemberRoleService tenantMemberRoleService) : ControllerBase
 {

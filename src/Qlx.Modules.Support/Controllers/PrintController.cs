@@ -8,10 +8,8 @@
  */
 
 using System.Text.Json;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using OpenIddict.Validation.AspNetCore;
 using Qlx.Abstractions.Constants;
 using Qlx.BuildingBlocks.Api;
 using Qlx.BuildingBlocks.Audit;
@@ -25,7 +23,6 @@ namespace Qlx.Modules.Support.Controllers;
 /// 打印中心控制器。所有端点需租户级 Token（OpenIddict Validation Scheme），
 /// 路由经模块许可过滤（support.print.* 权限点）。
 /// </summary>
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
 [ApiController]
 [Route("api/support/printing/templates")]
 public sealed class PrintController(

@@ -1,13 +1,24 @@
 /*
  * 所属公司：四川淇利馨集团有限公司
  * 作者：SpeakHero（491960352@qq.com）
- * 版本：1.0.0 beta
+ * 版本：1.1.0 beta
  * 创建时间：2026-10-21 18:00:00 +08:00 中国标准时间 星期三
- * 修改时间：2026-10-21 22:30:00 +08:00 中国标准时间 星期三
+ * 修改时间：2026-10-26 21:40:00 +08:00 中国标准时间 星期一
  * 描述：门户管理端 DTO 契约：对齐前端 src/Qlx.Web/src/types/admin.ts 字段形态（Id 一律 Hashids 混淆串，含数据库模式）
+ *       校验分层约定：入参静态规则走 DataAnnotations（格式复用 Qlx.BuildingBlocks 预编译正则特性，
+ *       字面量模式统一定义在 PortalConstants.Validation）；配置驱动的密码复杂度经 IValidatableObject
+ *       读取 QlxAuthOptions 执行 PasswordPolicyValidator 统一规则；出参为服务端构造，不挂验证注解。
  */
 
+using Microsoft.Extensions.Options;
+
 using Qlx.BuildingBlocks.Api;
+using Qlx.BuildingBlocks.Validation;
+
+using Qlx.Modules.Portal.Auth;
+using Qlx.Modules.Portal.Services;
+
+using System.ComponentModel.DataAnnotations;
 
 namespace Qlx.Modules.Portal.Dtos;
 
@@ -18,9 +29,11 @@ public sealed class PortalTenantQueryRequest : PagedRequest
     public string? Keyword { get; set; }
 
     /// <summary>状态过滤（Enabled / Disabled / Pending / ProvisioningFailed / Expired，空为全部）。</summary>
+    [RegularExpression(PortalConstants.Validation.TenantStatusFilterPattern, ErrorMessage = "无效的租户状态过滤值（须为 Enabled / Disabled / Pending / ProvisioningFailed / Expired）")]
     public string? Status { get; set; }
 
     /// <summary>数据库模式过滤（Shared / Isolated，空为全部）。</summary>
+    [RegularExpression(PortalConstants.Validation.DatabaseModePattern, ErrorMessage = "数据库模式过滤仅支持 Shared 或 Isolated")]
     public string? DatabaseMode { get; set; }
 }
 
@@ -31,6 +44,7 @@ public sealed class PortalUserQueryRequest : PagedRequest
     public string? Keyword { get; set; }
 
     /// <summary>状态过滤（Enabled / Disabled，空为全部）。</summary>
+    [RegularExpression(PortalConstants.Validation.UserStatusFilterPattern, ErrorMessage = "无效的用户状态过滤值（须为 Enabled / Disabled）")]
     public string? Status { get; set; }
 }
 
@@ -38,42 +52,77 @@ public sealed class PortalUserQueryRequest : PagedRequest
 public sealed record CreateTenantRequest
 {
     /// <summary>企业全称。</summary>
+    [Required(ErrorMessage = "企业全称必填")]
+    [StringLength(PortalConstants.Validation.MaxTenantNameLength, ErrorMessage = "企业全称不能超过 {1} 字")]
     public required string Name { get; init; }
 
-    /// <summary>统一社会信用代码（全局唯一）。</summary>
+    /// <summary>统一社会信用代码（全局唯一，18 位大写字母或数字）。</summary>
+    [Required(ErrorMessage = "统一社会信用代码必填")]
+    [CnUscc]
     public required string TaxNo { get; init; }
 
-    /// <summary>会员等级（Trial / Standard / Professional / Flagship）。</summary>
+    /// <summary>会员等级（Trial / Standard / Professional / Flagship，精确大小写）。</summary>
+    [Required(ErrorMessage = "会员等级必填")]
+    [RegularExpression(PortalConstants.Validation.MemberLevelPattern, ErrorMessage = "会员等级须为 Trial / Standard / Professional / Flagship")]
     public required string MemberLevel { get; init; }
 
     /// <summary>初始租户管理员登录账号（已存在则建立成员关系，不存在则创建待激活账号）。</summary>
+    [Required(ErrorMessage = "初始管理员登录账号必填")]
+    [StringLength(PortalConstants.Validation.MaxAdminAccountLength, ErrorMessage = "初始管理员登录账号不能超过 {1} 字")]
     public required string AdminAccount { get; init; }
 
     /// <summary>
     /// 数据库模式（Shared / Isolated）；为空时取 <c>Qlx:Portal:Provisioning:DefaultDatabaseMode</c>（默认 Shared）。
     /// </summary>
+    [RegularExpression(PortalConstants.Validation.DatabaseModePattern, ErrorMessage = "数据库模式仅支持 Shared 或 Isolated")]
     public string? DatabaseMode { get; init; }
 }
 
-/// <summary>保存租户模块授权入参（整单提交，按差异落授权记录）。</summary>
+/// <summary>保存租户模块授权入参（整单提交，按差异落授权记录；空集合表示全部回收）。</summary>
 public sealed record SaveTenantLicenseRequest
 {
-    /// <summary>授权模块编码集合（以本次提交为准）。</summary>
+    /// <summary>授权模块编码集合（以本次提交为准，元素须为模块目录已有编码）。</summary>
+    [Required(ErrorMessage = "模块编码集合必填")]
     public required IReadOnlyList<string> ModuleCodes { get; init; }
 
-    /// <summary>变更备注（写入授权记录）。</summary>
+    /// <summary>变更备注（写入授权记录，≤512 字）。</summary>
+    [StringLength(PortalConstants.Validation.MaxLicenseRemarkLength, ErrorMessage = "变更备注不能超过 {1} 字")]
     public string? Remark { get; init; }
 }
 
-/// <summary>重置门户用户密码入参。</summary>
-public sealed record ResetPortalUserPasswordRequest
+/// <summary>
+/// 重置门户用户密码入参。
+/// <para>
+/// 密码复杂度规则（最小长度 / 字母 / 数字 / 特殊字符）由 <see cref="QlxAuthOptions"/> 运行时配置驱动，
+/// 无法用静态注解表达，故经 <see cref="IValidatableObject"/> 在验证管线内解析密码选项并复用
+/// <see cref="PasswordPolicyValidator"/> 统一规则（严格以 Qlx:Portal:Auth 配置为准）。
+/// 项目验证管线为同步 MVC 模型验证（无异步验证基础设施），故采用同步 <see cref="IValidatableObject"/>。
+/// </para>
+/// </summary>
+public sealed record ResetPortalUserPasswordRequest : IValidatableObject
 {
-    /// <summary>新密码（≥8 位且同时含字母与数字）。</summary>
+    /// <summary>新密码（复杂度规则取 Qlx:Portal:Auth 密码配置）。</summary>
+    [Required(ErrorMessage = "新密码必填")]
     public required string NewPassword { get; init; }
-}
 
-/// <summary>通用分页结果（对齐前端 PagedResult：items + totalCount）。</summary>
-public sealed record PortalPagedResult<T>(IReadOnlyList<T> Items, long TotalCount);
+    /// <inheritdoc />
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        // 空值已由 [Required] 管辖，避免同一问题重复报错
+        if (string.IsNullOrWhiteSpace(NewPassword))
+        {
+            yield break;
+        }
+
+        var options = validationContext.GetService(typeof(IOptions<QlxAuthOptions>)) as IOptions<QlxAuthOptions>
+            ?? throw new InvalidOperationException("密码策略配置（IOptions<QlxAuthOptions>）不可用，无法完成密码校验");
+
+        if (PasswordPolicyValidator.TryGetComplexityError(NewPassword, options.Value, out var error))
+        {
+            yield return new ValidationResult(error, [nameof(NewPassword)]);
+        }
+    }
+}
 
 /// <summary>租户列表项。</summary>
 public sealed record PortalTenantItem

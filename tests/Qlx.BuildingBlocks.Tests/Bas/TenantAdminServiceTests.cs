@@ -1,4 +1,4 @@
-/*
+﻿/*
  * 所属公司：四川淇利馨集团有限公司
  * 作者：SpeakHero（491960352@qq.com）
  * 版本：1.0.0 beta
@@ -44,11 +44,22 @@ internal sealed class StubTenantMemberQuery : ITenantMemberQuery
 
     public Task<(IReadOnlyList<TenantMemberSummaryRow> Items, int Total)> QueryMembersAsync(
         long tenantId, string? keyword, long? orgId, int? role, int? status,
-        int skip, int take, CancellationToken cancellationToken)
+        int skip, int take, CancellationToken cancellationToken,
+        IReadOnlyCollection<long>? orgIds = null, long? onlyMemberId = null)
     {
-        List<TenantMemberSummaryRow> filtered = [.. Members.Where(m => m.TenantId == tenantId)];
+        IEnumerable<TenantMemberSummaryRow> filtered = Members.Where(m => m.TenantId == tenantId);
+        if (orgIds is not null)
+        {
+            filtered = filtered.Where(m => m.OrgId.HasValue && orgIds.Contains(m.OrgId.Value));
+        }
+        if (onlyMemberId.HasValue)
+        {
+            filtered = filtered.Where(m => m.TenantMemberId == onlyMemberId.Value);
+        }
+
+        List<TenantMemberSummaryRow> list = [.. filtered];
         return Task.FromResult<(IReadOnlyList<TenantMemberSummaryRow>, int)>(
-            ([.. filtered.Skip(skip).Take(take)], filtered.Count));
+            ([.. list.Skip(skip).Take(take)], list.Count));
     }
 
     public Task<TenantMemberSummaryRow?> GetMemberDetailAsync(long tenantMemberId, CancellationToken cancellationToken)
@@ -109,6 +120,15 @@ internal sealed class StubModulePermissionQuery : IModulePermissionQuery
         => Task.FromResult<IReadOnlyList<TenantModuleCardRow>>([]);
 }
 
+/// <summary>当前成员数据范围解析桩：默认 null（TenantAdmin 旁路/不过滤），用例按需编排。</summary>
+internal sealed class StubCurrentMemberDataScopeResolver : ICurrentMemberDataScopeResolver
+{
+    public MemberDataScopeContext? Context { get; set; }
+
+    public Task<MemberDataScopeContext?> ResolveAsync(CancellationToken ct)
+        => Task.FromResult(Context);
+}
+
 public sealed class TenantAdminServiceTests
 {
     private const long TenantId = 42L;
@@ -122,7 +142,9 @@ public sealed class TenantAdminServiceTests
         TenantLogDbContext LogDb,
         StubTenantMemberQuery MemberQuery,
         StubTenantMemberAdmin MemberAdmin,
-        RecordingMessageService Messages) Build(long tenantId = TenantId)
+        RecordingMessageService Messages) Build(
+        long tenantId = TenantId,
+        StubCurrentMemberDataScopeResolver? scopeResolver = null)
     {
         // Sqlite 内存库（ExecuteDelete 等关系型 API 需真实关系提供程序；选项预配 → 跳过 SqlServer 租户路由）
         var basConnection = new SqliteConnection("DataSource=:memory:");
@@ -145,22 +167,29 @@ public sealed class TenantAdminServiceTests
         var memberQuery = new StubTenantMemberQuery();
         var memberAdmin = new StubTenantMemberAdmin();
         var messages = new RecordingMessageService();
-        var encodingGenerator = new EncodingGenerator(new PinyinConverter(), new InMemorySerialSequenceStore());
+        var serialSequenceStore = new InMemorySerialSequenceStore();
+        var encodingGenerator = new EncodingGenerator(new PinyinConverter(), serialSequenceStore);
+        var repository = new BasTenantRepository(db, logDb);
         var service = new TenantAdminService(
             new TestTenantContext(tenantId),
-            new BasTenantRepository(db, logDb),
+            repository,
             memberQuery,
             memberAdmin,
             new StubModulePermissionQuery(),
             Obfuscator,
             messages,
-            encodingGenerator);
+            encodingGenerator,
+            scopeResolver ?? new StubCurrentMemberDataScopeResolver(),
+            new Qlx.Modules.Bas.Services.Numbering.BasCodeNumberGenerator(repository, serialSequenceStore),
+            new Qlx.BuildingBlocks.Caching.MemoryCacheService(
+                Microsoft.Extensions.Options.Options.Create(new Qlx.BuildingBlocks.Caching.CacheOptions())));
         return (service, db, logDb, memberQuery, memberAdmin, messages);
     }
 
     private static Organization SeedOrg(BasTenantDbContext db, long id, string name, long? parentId = null)
     {
-        var org = new Organization(TenantId, name, OrgNodeType.Department, parentId);
+        // 租户内 Code 唯一索引：测试种子显式给出唯一编码
+        var org = new Organization(TenantId, name, OrgNodeType.Department, parentId, code: $"ORG-T-{id}");
         org.AssignId(id);
         db.Organizations.Add(org);
         return org;
@@ -543,5 +572,155 @@ public sealed class TenantAdminServiceTests
 
         _ = await Assert.ThrowsAsync<NotFoundException>(
             () => service.GetMemberDetailAsync(500, TestContext.Current.CancellationToken));
+    }
+
+    // ============ X-5：数据范围过滤（四档 + TenantAdmin 旁路）============
+
+    /// <summary>编排：组织树 10（根）→ 11（子）；成员 500 本人在 10，501 在 10，502 在 11，503 无部门。</summary>
+    private static async Task SeedScopeFixtureAsync(BasTenantDbContext db, StubTenantMemberQuery memberQuery)
+    {
+        SeedOrg(db, 10, "技术部");
+        SeedOrg(db, 11, "技术一部", parentId: 10);
+        SeedOrg(db, 12, "财务部");
+        _ = await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        memberQuery.Members.Add(MemberRow(500, TenantId, "13800000001", orgId: 10));
+        memberQuery.Members.Add(MemberRow(501, TenantId, "13800000002", orgId: 10));
+        memberQuery.Members.Add(MemberRow(502, TenantId, "13800000003", orgId: 11));
+        memberQuery.Members.Add(MemberRow(503, TenantId, "13800000004", orgId: 12));
+        memberQuery.Members.Add(MemberRow(504, TenantId, "13800000005"));
+    }
+
+    private static PagedRequest FirstPage => new() { Page = 1, PageSize = 20 };
+
+    [Fact]
+    public async Task QueryMembersAsyncTenantAdminBypassReturnsAll()
+    {
+        // resolver Context = null 即 TenantAdmin 旁路（不过滤）
+        var (service, db, _, memberQuery, _, _) = Build();
+        await SeedScopeFixtureAsync(db, memberQuery);
+
+        PagedResult<MemberRow> page = await service.QueryMembersAsync(
+            null, null, null, null, FirstPage, TestContext.Current.CancellationToken);
+
+        Assert.Equal(5, page.TotalCount);
+    }
+
+    [Fact]
+    public async Task QueryMembersAsyncSelfScopeReturnsOnlySelf()
+    {
+        var scope = new StubCurrentMemberDataScopeResolver
+        {
+            Context = new MemberDataScopeContext(500, DataScope.Self, OrgId: 10),
+        };
+        var (service, db, _, memberQuery, _, _) = Build(scopeResolver: scope);
+        await SeedScopeFixtureAsync(db, memberQuery);
+
+        PagedResult<MemberRow> page = await service.QueryMembersAsync(
+            null, null, null, null, FirstPage, TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, page.TotalCount);
+        Assert.Equal(500, Assert.Single(page.Items).TenantMemberId);
+    }
+
+    [Fact]
+    public async Task QueryMembersAsyncDeptScopeReturnsOwnDeptOnly()
+    {
+        var scope = new StubCurrentMemberDataScopeResolver
+        {
+            Context = new MemberDataScopeContext(500, DataScope.Dept, OrgId: 10),
+        };
+        var (service, db, _, memberQuery, _, _) = Build(scopeResolver: scope);
+        await SeedScopeFixtureAsync(db, memberQuery);
+
+        PagedResult<MemberRow> page = await service.QueryMembersAsync(
+            null, null, null, null, FirstPage, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, page.TotalCount);
+        Assert.Equal([500, 501], page.Items.Select(i => i.TenantMemberId).OrderBy(x => x));
+    }
+
+    [Fact]
+    public async Task QueryMembersAsyncDeptAndChildrenScopeIncludesSubtree()
+    {
+        var scope = new StubCurrentMemberDataScopeResolver
+        {
+            Context = new MemberDataScopeContext(500, DataScope.DeptAndChildren, OrgId: 10),
+        };
+        var (service, db, _, memberQuery, _, _) = Build(scopeResolver: scope);
+        await SeedScopeFixtureAsync(db, memberQuery);
+
+        PagedResult<MemberRow> page = await service.QueryMembersAsync(
+            null, null, null, null, FirstPage, TestContext.Current.CancellationToken);
+
+        Assert.Equal(3, page.TotalCount);
+        Assert.Equal([500, 501, 502], page.Items.Select(i => i.TenantMemberId).OrderBy(x => x));
+    }
+
+    [Fact]
+    public async Task QueryMembersAsyncAllScopeReturnsAll()
+    {
+        var scope = new StubCurrentMemberDataScopeResolver
+        {
+            Context = new MemberDataScopeContext(500, DataScope.All, OrgId: 10),
+        };
+        var (service, db, _, memberQuery, _, _) = Build(scopeResolver: scope);
+        await SeedScopeFixtureAsync(db, memberQuery);
+
+        PagedResult<MemberRow> page = await service.QueryMembersAsync(
+            null, null, null, null, FirstPage, TestContext.Current.CancellationToken);
+
+        Assert.Equal(5, page.TotalCount);
+    }
+
+    [Fact]
+    public async Task QueryMembersAsyncExplicitOrgIdOutsideScopeReturnsEmpty()
+    {
+        // 显式按财务部（12）过滤，但范围仅限技术部（10）→ 求交为空页
+        var scope = new StubCurrentMemberDataScopeResolver
+        {
+            Context = new MemberDataScopeContext(500, DataScope.Dept, OrgId: 10),
+        };
+        var (service, db, _, memberQuery, _, _) = Build(scopeResolver: scope);
+        await SeedScopeFixtureAsync(db, memberQuery);
+
+        PagedResult<MemberRow> page = await service.QueryMembersAsync(
+            12, null, null, null, FirstPage, TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, page.TotalCount);
+    }
+
+    [Fact]
+    public async Task GetMemberDetailAsyncOutsideScopeThrows404()
+    {
+        var scope = new StubCurrentMemberDataScopeResolver
+        {
+            Context = new MemberDataScopeContext(500, DataScope.Dept, OrgId: 10),
+        };
+        var (service, db, _, memberQuery, _, _) = Build(scopeResolver: scope);
+        await SeedScopeFixtureAsync(db, memberQuery);
+
+        // 503 在财务部（12），超出本部门范围 → 404（防 IDOR 探测）
+        _ = await Assert.ThrowsAsync<NotFoundException>(
+            () => service.GetMemberDetailAsync(503, TestContext.Current.CancellationToken));
+
+        // 同部门 501 不受影响
+        MemberRow row = await service.GetMemberDetailAsync(501, TestContext.Current.CancellationToken);
+        Assert.Equal(501, row.TenantMemberId);
+    }
+
+    [Fact]
+    public async Task ListAllOrgsAsyncDeptAndChildrenScopeReturnsSubtree()
+    {
+        var scope = new StubCurrentMemberDataScopeResolver
+        {
+            Context = new MemberDataScopeContext(500, DataScope.DeptAndChildren, OrgId: 10),
+        };
+        var (service, db, _, memberQuery, _, _) = Build(scopeResolver: scope);
+        await SeedScopeFixtureAsync(db, memberQuery);
+
+        IReadOnlyList<OrganizationFlatRow> rows = await service.ListAllOrgsAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, rows.Count);
+        Assert.DoesNotContain(rows, r => r.Name == "财务部");
     }
 }

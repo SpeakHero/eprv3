@@ -3,20 +3,20 @@
  * 作者：SpeakHero（491960352@qq.com）
  * 版本：1.0.0 beta
  * 创建时间：2026-10-23 08:15:00 +08:00 中国标准时间 星期五
+ * 修改时间：2026-10-27 10:30:00 +08:00 中国标准时间 星期二
  * 描述：SSE 实时推送流端点（GET /api/support/messages/stream，text/event-stream）：
  *       Last-Event-ID 断线续传 + 心跳保活 + 断开注销（文档 §2.3：SSE 单向通讯禁止轮询）
  */
 
 using System.Net.Mime;
 using System.Text;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using OpenIddict.Validation.AspNetCore;
 using Qlx.Abstractions.Domain;
 using Qlx.Abstractions.Exceptions;
 using Qlx.Abstractions.Sse;
 using Qlx.Abstractions.Tenancy;
+using Qlx.BuildingBlocks.Api;
 using Qlx.BuildingBlocks.Sse;
 
 namespace Qlx.Modules.Support.Controllers;
@@ -31,7 +31,6 @@ namespace Qlx.Modules.Support.Controllers;
 /// <param name="currentUser">当前用户上下文。</param>
 /// <param name="idObfuscator">ID 混淆器（用户标识 sub claim 为 Hashids 混淆串，边界解码为真实 long）。</param>
 /// <param name="options">SSE 基座配置。</param>
-[Authorize(AuthenticationSchemes = OpenIddict.Validation.AspNetCore.OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
 [ApiController]
 public sealed class MessageStreamController(
     ISseClientChannel sseStream,
@@ -47,6 +46,7 @@ public sealed class MessageStreamController(
     /// <param name="cancellationToken">请求中止令牌。</param>
     [HttpGet("api/support/messages/stream")]
     [Produces(MediaTypeNames.Text.EventStream)]
+    [SkipApiResponseWrap]
     public async Task Stream([FromQuery] string? connectionId, CancellationToken cancellationToken)
     {
         if (tenantContext.TenantId is not > 0)

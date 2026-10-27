@@ -39,6 +39,9 @@ public interface ISupportFileService
     /// <summary>从回收站还原（file.restore，SYNC，需 Write 权限）。</summary>
     Task<SupportFileMetadata> RestoreAsync(long fileId, CancellationToken cancellationToken);
 
+    /// <summary>回收站彻底删除（file.purge，SYNC，需 Delete 权限；物理清理不可恢复）。</summary>
+    Task<SupportFileMetadata> PurgeAsync(long fileId, CancellationToken cancellationToken);
+
     /// <summary>回收站列表（file.recycle.list，SYNC；管理员全量，普通用户仅本人）。</summary>
     Task<IReadOnlyList<SupportFileMetadata>> ListRecycleAsync(CancellationToken cancellationToken);
 }

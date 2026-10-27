@@ -9,12 +9,14 @@
 using Hangfire;
 using Hangfire.Dashboard;
 using Hangfire.SqlServer;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.DependencyInjection.Extensions;
+
 using Qlx.Abstractions.Messages;
 using Qlx.BuildingBlocks.Messaging;
 using Qlx.BuildingBlocks.MultiTenancy;
@@ -41,16 +43,16 @@ public static class QlxJobsServiceCollectionExtensions
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        services.AddOptions<QlxJobsOptions>()
+        _ = services.AddOptions<QlxJobsOptions>()
             .BindConfiguration(QlxJobsOptions.SectionName)
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
         // Hangfire 存储并入共享库：连接串复用多租户共享库配置（Qlx:Tenancy:SharedDatabase），
         // 配置缺失在 Hangfire 初始化时抛出（AddHangfire 的服务提供者回调在启动期执行，等效 ValidateOnStart）
-        services.AddHangfire((serviceProvider, globalConfiguration) =>
+        _ = services.AddHangfire((serviceProvider, globalConfiguration) =>
         {
-            var shared = serviceProvider.GetRequiredService<IOptions<SharedDatabaseOptions>>().Value;
+            SharedDatabaseOptions shared = serviceProvider.GetRequiredService<IOptions<SharedDatabaseOptions>>().Value;
             if (string.IsNullOrWhiteSpace(shared.DbHost) || string.IsNullOrWhiteSpace(shared.DbName))
             {
                 throw new InvalidOperationException(
@@ -71,9 +73,9 @@ public static class QlxJobsServiceCollectionExtensions
                     });
         });
 
-        services.AddHangfireServer((serviceProvider, serverOptions) =>
+        _ = services.AddHangfireServer((serviceProvider, serverOptions) =>
         {
-            var jobsOptions = serviceProvider.GetRequiredService<IOptions<QlxJobsOptions>>().Value;
+            QlxJobsOptions jobsOptions = serviceProvider.GetRequiredService<IOptions<QlxJobsOptions>>().Value;
             serverOptions.WorkerCount = jobsOptions.WorkerCount;
             serverOptions.Queues = [.. jobsOptions.Queues.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
             serverOptions.ServerName = Environment.MachineName;
@@ -81,11 +83,11 @@ public static class QlxJobsServiceCollectionExtensions
 
         // 任务中心基础设施（IMessageService 默认 NoOp：2D 信息中心落地后由 DI 覆盖注册真实实现）
         services.TryAddScoped<IMessageService, NotConfiguredMessageService>();
-        services.AddScoped<JobExecutionRunner>();
-        services.AddScoped<IJobHandlerFactory, JobHandlerFactory>();
-        services.AddSingleton<IJobBackgroundEnqueuer, HangfireJobEnqueuer>();
-        services.AddScoped<JobBackgroundInvoker>();
-        services.AddHostedService<JobDispatchHostedService>();
+        _ = services.AddScoped<JobExecutionRunner>();
+        _ = services.AddScoped<IJobHandlerFactory, JobHandlerFactory>();
+        _ = services.AddSingleton<IJobBackgroundEnqueuer, HangfireJobEnqueuer>();
+        _ = services.AddScoped<JobBackgroundInvoker>();
+        _ = services.AddHostedService<JobDispatchHostedService>();
 
         return services;
     }
@@ -99,7 +101,7 @@ public static class QlxJobsServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(app);
 
-        var environment = app.ApplicationServices.GetRequiredService<IHostEnvironment>();
+        IHostEnvironment environment = app.ApplicationServices.GetRequiredService<IHostEnvironment>();
         if (!environment.IsDevelopment())
         {
             return app;
@@ -123,5 +125,7 @@ public sealed class AuthenticatedDashboardAuthorizationFilter : IDashboardAuthor
     /// <param name="context">Dashboard 上下文。</param>
     /// <returns>已认证返回 true。</returns>
     public bool Authorize(DashboardContext context)
-        => context.GetHttpContext().User.Identity?.IsAuthenticated == true;
+    {
+        return context.GetHttpContext().User.Identity?.IsAuthenticated == true;
+    }
 }

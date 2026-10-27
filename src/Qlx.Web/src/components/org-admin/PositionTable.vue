@@ -1,8 +1,8 @@
 <!--
   所属公司：四川淇利馨集团有限公司
-  描述：岗位列表——QlxDataTable + 新建 / 编辑弹窗 + 启停操作
-  说明：受控展示组件；保存 / 启停意图经 save / toggle 抛出（确认框与请求由页面处理）；
-        页面工具栏可经 ref 调 openCreate() 触发新建
+  描述：岗位列表（Bas 主数据版）——QlxDataTable + 新建 / 编辑弹窗 + 启停 + 超编审批申请
+  说明：受控展示组件；保存 / 启停 / 超编申请意图经事件抛出（确认框与请求由页面处理）；
+        编码只读回显（无编码输入框，N-1），状态数值对接（B-4）
 -->
 <script setup lang="ts">
 import { computed, ref } from 'vue'
@@ -10,12 +10,12 @@ import QlxDataTable from '@/components/crud/QlxDataTable.vue'
 import type { CrudColumn } from '@/components/crud/QlxDataTable.vue'
 import QlxFormDialog from '@/components/crud/QlxFormDialog.vue'
 import type { FormField, FormFieldOption, FormValue } from '@/components/crud/QlxFormDialog.vue'
-import type { PositionItem, SavePositionInput } from '@/types/org-admin'
-import { entityStatusLabels, entityStatusTones } from '@/types/tenant'
+import type { BasPositionRow, SaveBasPositionPayload } from '@/types/bas-master'
+import { basStatusLabel, basStatusTone } from '@/utils/bas-master-mappers'
 
 const props = withDefaults(
   defineProps<{
-    items: PositionItem[]
+    items: BasPositionRow[]
     loading?: boolean
     total?: number
     page?: number
@@ -30,14 +30,15 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  save: [input: SavePositionInput]
-  toggle: [row: PositionItem]
+  save: [input: SaveBasPositionPayload]
+  toggle: [row: BasPositionRow]
+  'request-overstaff': [row: BasPositionRow]
   'page-change': [page: number, pageSize: number]
 }>()
 
-const columns: Array<CrudColumn<PositionItem>> = [
+const columns: Array<CrudColumn<BasPositionRow>> = [
   { prop: 'name', label: '岗位名称', width: 150, fixed: 'left' },
-  { prop: 'code', label: '岗位编码', type: 'code', width: 140 },
+  { prop: 'code', label: '岗位编码', type: 'code', width: 150 },
   { prop: 'orgId', label: '所属组织', minWidth: 160 },
   { prop: 'headcount', label: '编制人数', width: 96, align: 'center' },
   { prop: 'currentCount', label: '在职人数', width: 96, align: 'center' },
@@ -47,10 +48,11 @@ const columns: Array<CrudColumn<PositionItem>> = [
     type: 'tag',
     width: 90,
     align: 'center',
-    tagText: (row) => entityStatusLabels[row.status],
-    tagTone: (row) => entityStatusTones[row.status],
+    tagText: (row) => basStatusLabel(row.status),
+    tagTone: (row) => basStatusTone(row.status),
   },
-  { prop: 'description', label: '岗位说明', minWidth: 220 },
+  { prop: 'duty', label: '岗位职责', minWidth: 180 },
+  { prop: 'description', label: '岗位说明', minWidth: 180 },
   { prop: 'updatedAt', label: '更新时间', type: 'time', width: 150 },
 ]
 
@@ -63,7 +65,7 @@ function orgLabel(orgId: string): string {
 /** ============ 新建 / 编辑弹窗 ============ */
 
 const dialogOpen = ref(false)
-const editing = ref<PositionItem | null>(null)
+const editing = ref<BasPositionRow | null>(null)
 
 const dialogTitle = computed(() =>
   editing.value ? `编辑岗位 · ${editing.value.name}` : '新增岗位',
@@ -77,6 +79,9 @@ const fields = computed<FormField[]>(() => [
     required: true,
     maxlength: 32,
     defaultValue: editing.value?.name ?? '',
+    hint: editing.value
+      ? `编码 ${editing.value.code} 由系统生成，不可修改`
+      : '编码由系统按规则自动生成，无需填写',
   },
   {
     prop: 'orgId',
@@ -94,6 +99,14 @@ const fields = computed<FormField[]>(() => [
     defaultValue: editing.value?.headcount ?? 1,
   },
   {
+    prop: 'duty',
+    label: '岗位职责',
+    type: 'textarea',
+    full: true,
+    maxlength: 200,
+    defaultValue: editing.value?.duty ?? '',
+  },
+  {
     prop: 'description',
     label: '岗位说明',
     type: 'textarea',
@@ -108,18 +121,19 @@ function openCreate(): void {
   dialogOpen.value = true
 }
 
-function openEdit(row: PositionItem): void {
+function openEdit(row: BasPositionRow): void {
   editing.value = row
   dialogOpen.value = true
 }
 
 function onSubmit(values: Record<string, FormValue>): void {
   emit('save', {
-    id: editing.value?.id,
+    id: editing.value?.id ?? null,
     name: String(values.name ?? '').trim(),
     orgId: String(values.orgId ?? ''),
     headcount: Number(values.headcount ?? 0),
-    description: String(values.description ?? '').trim(),
+    description: String(values.description ?? '').trim() || null,
+    duty: String(values.duty ?? '').trim() || null,
   })
 }
 
@@ -140,12 +154,18 @@ defineExpose({ openCreate, closeDialog })
       :total="total"
       :page="page"
       :page-size="pageSize"
-      :actions-width="130"
+      :actions-width="180"
       empty-text="暂无岗位"
       @page-change="(p: number, s: number) => emit('page-change', p, s)"
     >
       <template #cell-orgId="{ row }">
         {{ orgLabel(row.orgId) }}
+      </template>
+      <template #cell-headcount="{ row }">
+        <span class="qlx-numeric">{{ row.headcount }}</span>
+        <span v-if="row.currentCount > row.headcount" class="position-over" title="在职人数超出编制">
+          超编
+        </span>
       </template>
       <template #actions="{ row }">
         <button
@@ -161,10 +181,19 @@ defineExpose({ openCreate, closeDialog })
           v-permission="'bas.admin.org.action'"
           type="button"
           class="cell-link"
-          :class="{ 'is-danger': row.status === 'Enabled' }"
+          @click="emit('request-overstaff', row)"
+        >
+          超编申请
+        </button>
+        <el-divider direction="vertical" />
+        <button
+          v-permission="'bas.admin.org.action'"
+          type="button"
+          class="cell-link"
+          :class="{ 'is-danger': row.status === 1 }"
           @click="emit('toggle', row)"
         >
-          {{ row.status === 'Enabled' ? '停用' : '启用' }}
+          {{ row.status === 1 ? '停用' : '启用' }}
         </button>
       </template>
     </QlxDataTable>
@@ -198,6 +227,12 @@ defineExpose({ openCreate, closeDialog })
 
 .cell-link.is-danger {
   color: var(--qlx-danger);
+}
+
+.position-over {
+  margin-left: 4px;
+  color: var(--qlx-danger);
+  font-size: var(--qlx-text-xs);
 }
 </style>
 

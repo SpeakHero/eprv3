@@ -277,14 +277,11 @@ export const useAuthStore = defineStore('auth', {
 
       // v1.1：decode 租户级 Token（qlx_member_role + qlx_permissions）
       this.applyTenantTokenClaims(token.access_token)
-      // v1.2：租户 Token 为 JWE（RSA-OAEP 加密，5 段）时前端无法解出 claims，
-      // 以 /me 权威响应补齐（TenantAdmin 零计算旁路依赖 memberRole，缺失会导致 v-permission 移除全部按钮）
-      if (!this.memberRole && user.memberRole) {
-        this.memberRole = user.memberRole
-      }
-      if (this.permissions.length === 0 && Array.isArray(user.permissions)) {
-        this.permissions = user.permissions
-      }
+      // v1.3：角色状态以 /me 权威响应无条件覆盖（X-3 修复）：
+      // 1. JWE（5 段）前端无法解 claims，依赖 /me 补齐；
+      // 2. 切换企业/角色时必须丢弃上一上下文残留（管理员 → 普通成员不得保留 TenantAdmin）
+      this.memberRole = user.memberRole ?? ''
+      this.permissions = Array.isArray(user.permissions) ? user.permissions : []
 
       this.persist()
       this.scheduleRefresh()
@@ -308,10 +305,12 @@ export const useAuthStore = defineStore('auth', {
       }
       this.user = user
       this.licensedModules = user.modules ?? []
+      // v1.3：进入门户管理前显式清空租户角色态（X-3 修复）：
+      // 防止上一企业的 memberRole/permissions 残留叠加到门户上下文
+      this.memberRole = ''
+      this.memberRoleId = ''
+      this.permissions = []
       this.portalAdminMode = true
-
-      // v1.1：身份级 Token 已经在 signIn() 时 decode 过，portalAdminMode 本身就是全权限旁路
-      // 这里无需再覆盖 memberRole / permissions
 
       this.persist()
       broadcastSession('session-updated')

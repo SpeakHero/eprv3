@@ -1,0 +1,40 @@
+{
+  "steps": {
+    "supplier_active": {
+      "row": "SUP-000001 \t 自动化验证供应商180626 \t 91AUTO180626X00000 \t 生产厂家 \t C 级 \t 合作中 \t — \t — \t 2026-10-25 19:47 \t 详情编辑评级准入",
+      "has_active": true,
+      "has_pending": false,
+      "body_has_supplier": true
+    },
+    "dict_visible": {
+      "has_auto180626": true,
+      "has_qa1807": true,
+      "has_group_1807": true
+    },
+    "person_required": {
+      "errors": [
+        "证件号码不能为空",
+        "手机号不能为空",
+        "所属组织不能为空",
+        "岗位不能为空"
+      ],
+      "org_pos_errors": [
+        "所属组织 请选择  员工必须指定所属组织与岗位  所属组织不能为空",
+        "岗位 请选择  员工必须指定岗位  岗位不能为空"
+      ],
+      "dialog_still_open": true
+    },
+    "approval_todos": {
+      "url": "http://localhost:5173/workbench"
+    }
+  },
+  "login_url": "http://localhost:5173/workbench",
+  "screenshots": [
+    "41-supplier-active-after-approval.png",
+    "42-dict-subsidiary-visible.png",
+    "43-person-employee-required.png",
+    "44-approval-todos-empty.png"
+  ],
+  "failed_requests": [],
+  "page_errors": []
+}

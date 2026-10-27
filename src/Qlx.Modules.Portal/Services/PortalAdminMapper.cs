@@ -85,11 +85,10 @@ internal static class PortalAdminMapper
             DatabaseMode = ToDatabaseModeText(tenant.Database?.DatabaseMode ?? tenant.DatabaseMode),
             DbName = tenant.Database?.DbName,
             DbError = tenant.LastErrorMessage,
-            LicensedModuleCodes = tenant.Modules
+            LicensedModuleCodes = [.. tenant.Modules
                 .Where(m => m.Status == TenantModuleStatus.Enabled)
                 .Select(m => m.ModuleCode)
-                .OrderBy(c => c, StringComparer.Ordinal)
-                .ToList(),
+                .OrderBy(c => c, StringComparer.Ordinal)],
             CreatedAt = tenant.CreatedAt,
             LastLoginAt = lastLoginAt,
         };

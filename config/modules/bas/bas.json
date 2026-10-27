@@ -1,0 +1,9 @@
+{
+  "Qlx": {
+    "Bas": {
+      "_comment": "Bas 模块技术参数（业务阈值不落配置，统一走 por_parameters）；CacheTtlSeconds 为主数据只读缓存基线 TTL（秒），CertScanBatchSize 为供应商资质到期扫描单批条数",
+      "CacheTtlSeconds": 300,
+      "CertScanBatchSize": 200
+    }
+  }
+}

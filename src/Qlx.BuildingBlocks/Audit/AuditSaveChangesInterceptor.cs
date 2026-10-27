@@ -10,10 +10,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Logging;
-using Qlx.Abstractions.Audit;
+
 using Qlx.Abstractions.Domain;
-using Qlx.Abstractions.Serialization;
 using Qlx.BuildingBlocks.Ids;
 
 namespace Qlx.BuildingBlocks.Audit;
@@ -43,7 +41,11 @@ public sealed partial class AuditSaveChangesInterceptor(
     /// <inheritdoc />
     public override InterceptionResult<int> SavingChanges(DbContextEventData eventData, InterceptionResult<int> result)
     {
-        if (eventData.Context is null) return result;
+        if (eventData.Context is null)
+        {
+            return result;
+        }
+
         ApplyPreSaveMutations(eventData.Context);
         return result;
     }
@@ -52,17 +54,21 @@ public sealed partial class AuditSaveChangesInterceptor(
     public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
         DbContextEventData eventData, InterceptionResult<int> result, CancellationToken cancellationToken)
     {
-        if (eventData.Context is null) return result;
+        if (eventData.Context is null)
+        {
+            return result;
+        }
+
         ApplyPreSaveMutations(eventData.Context);
         return await base.SavingChangesAsync(eventData, result, cancellationToken).ConfigureAwait(false);
     }
 
     private void ApplyPreSaveMutations(DbContext context)
     {
-        var now = DateTimeOffset.UtcNow;
+        DateTimeOffset now = DateTimeOffset.UtcNow;
         var user = _userContext?.UserName ?? _userContext?.UserId;
 
-        foreach (var entry in context.ChangeTracker.Entries())
+        foreach (EntityEntry entry in context.ChangeTracker.Entries())
         {
             switch (entry.State)
             {
@@ -86,7 +92,7 @@ public sealed partial class AuditSaveChangesInterceptor(
             // 元数据门控：应用侧生成（挂雪花值生成器 / 显式 Never 配置）的实体兜底赋值；
             // 数据库自增（IDENTITY 且无显式生成器，如 Bas 模块自增模型）实体跳过，交由数据库生成。
             // 常态下雪花值生成器已在 Add 时赋值（Id 非 0 不进本分支），此处仅覆盖残余手工置 0 路径
-            var idProperty = entry.Property(nameof(Entity.Id));
+            PropertyEntry idProperty = entry.Property(nameof(Entity.Id));
             if (idProperty.Metadata.GetValueGeneratorFactory() is not null
                 || idProperty.Metadata.ValueGenerated == Microsoft.EntityFrameworkCore.Metadata.ValueGenerated.Never)
             {
@@ -146,9 +152,9 @@ public sealed partial class AuditSaveChangesInterceptor(
     {
         try
         {
-            var prop = entry.Property(propertyName);
+            PropertyEntry prop = entry.Property(propertyName);
             // 可空属性（如 DateTimeOffset? DeletedAt）按底层类型匹配
-            var targetType = Nullable.GetUnderlyingType(prop.Metadata.ClrType) ?? prop.Metadata.ClrType;
+            Type targetType = Nullable.GetUnderlyingType(prop.Metadata.ClrType) ?? prop.Metadata.ClrType;
             if (targetType == value.GetType())
             {
                 prop.CurrentValue = value;

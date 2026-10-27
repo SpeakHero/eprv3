@@ -9,9 +9,7 @@
  */
 
 using System.Net.Mime;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenIddict.Validation.AspNetCore;
 using Qlx.Abstractions.Constants;
 using Qlx.Abstractions.Exceptions;
 using Qlx.Abstractions.Modules;
@@ -26,7 +24,6 @@ namespace Qlx.Modules.Bas.Controllers;
 /// <param name="tenantMenuQuery">租户菜单查询（Portal 模块实现，模块间只依赖 Abstractions）。</param>
 /// <param name="obfuscator">Id 混淆器（解码 tenant_id claim）。</param>
 [ApiController]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
 [Route("api/tenant/menus")]
 public sealed class TenantMenuController(
     ITenantMenuQuery tenantMenuQuery,

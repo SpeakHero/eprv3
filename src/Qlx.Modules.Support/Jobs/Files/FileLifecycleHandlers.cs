@@ -14,6 +14,7 @@ using Qlx.Abstractions.Exceptions;
 using Qlx.Abstractions.Files;
 using Qlx.Abstractions.Jobs;
 using Qlx.Abstractions.Tenancy;
+using Qlx.BuildingBlocks.Files;
 using Qlx.Modules.Support.Domain;
 using Qlx.Modules.Support.Options;
 
@@ -139,4 +140,91 @@ public sealed partial class FileRestoreHandler(
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "文件还原被拒绝：{FileId} / {OperatorId}")]
     private partial void LogRestoreDenied(long fileId, string operatorId);
+}
+
+/// <summary>
+/// 回收站彻底删除处理器（file.purge，SYNC）。仅 RECYCLED 对象可彻底删除：需 Delete 权限；
+/// 文件对象在同存储键无其他存活引用时物理删除内容（规则 R6），目录无物理文件直接标记 PURGED。
+/// 物理删除失败抛冲突（对象保持 RECYCLED，由周期清理任务兜底重试）。
+/// </summary>
+public sealed partial class FilePurgeHandler(
+    SupportTenantDbContext db,
+    IServiceProvider serviceProvider,
+    IFileStorageBackend storageBackend,
+    ILogger<FilePurgeHandler> logger) : IJobHandler
+{
+    private readonly ITenantSubjectQuery? _subjectQuery = serviceProvider.GetService<ITenantSubjectQuery>();
+    private readonly IFileStorageBackend _storageBackend = storageBackend;
+    private readonly ILogger<FilePurgeHandler> _logger = logger;
+
+    /// <inheritdoc />
+    public string TaskCode => FileTaskCodes.Purge;
+
+    /// <inheritdoc />
+    public async Task<CompletedResult> ExecuteAsync(JobContext context, CancellationToken cancellationToken)
+    {
+        var operatorId = FileJobHelpers.GetRequiredString(context, FileJobParams.OperatorId);
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        var target = await FileJobHelpers
+            .LoadTargetAsync(db, context, tracked: true, cancellationToken)
+            .ConfigureAwait(false);
+        if (target is not { Status: StorageObjectStatus.Recycled })
+        {
+            throw new NotFoundException("回收站文件", FileJobHelpers.ResolveResourceId(context));
+        }
+
+        var permission = await FileAclGuard
+            .ComputeAsync(db, _subjectQuery, target, operatorId, cancellationToken)
+            .ConfigureAwait(false);
+        if (!permission.HasFlag(FilePermission.Delete))
+        {
+            LogPurgeDenied(target.Id, operatorId);
+            throw new ForbiddenException($"无彻底删除权限：{target.Name}");
+        }
+
+        if (target.ObjectType == StorageObjectType.File)
+        {
+            var storageKey = await db.FileVersions
+                .AsNoTracking()
+                .Where(v => v.ObjectId == target.Id)
+                .OrderByDescending(v => v.VerNo)
+                .Select(v => v.StorageKey)
+                .FirstOrDefaultAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!string.IsNullOrWhiteSpace(storageKey)
+                && !await FilePurgeHelpers.HasOtherAliveReferenceAsync(db, storageKey, target.Id, cancellationToken)
+                    .ConfigureAwait(false))
+            {
+                try
+                {
+                    await _storageBackend.DeleteAsync(storageKey, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    LogPhysicalDeleteFailed(target.Id, storageKey, ex);
+                    throw new ConflictException("物理文件删除失败，请稍后重试（对象仍保留在回收站）。", "FILE_PURGE_FAILED");
+                }
+            }
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        target.MarkPurged();
+        db.FileOpLogs.Add(new FileOpLog(db.CurrentTenantId, target.Id, "PURGE", operatorId, null, "回收站彻底删除", now));
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        stopwatch.Stop();
+        return new CompletedResult(
+            new FileMetadataJobPayload(target.Id, target.Name, target.Mime ?? string.Empty, target.Size, target.Hash,
+                target.Path, target.BizDomain, target.CurrentVersion, target.OwnerId, target.Status.ToString(),
+                false, target.RecycledAt, target.CreatedAt, target.UpdatedAt),
+            null, null, stopwatch.ElapsedMilliseconds, IsSuccess: true);
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "彻底删除被拒绝：{FileId} / {OperatorId}")]
+    private partial void LogPurgeDenied(long fileId, string operatorId);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "彻底删除物理文件失败（对象保留在回收站）：{FileId} / {StorageKey}")]
+    private partial void LogPhysicalDeleteFailed(long fileId, string storageKey, Exception exception);
 }

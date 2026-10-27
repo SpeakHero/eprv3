@@ -1,4 +1,4 @@
-/*
+﻿/*
  * 所属公司：四川淇利馨集团有限公司
  * 描述：支撑功能域统一 API 封装（审批 / 消息 / 任务 / 文件 / 打印）
  * 说明：
@@ -11,8 +11,8 @@
 import axios from 'axios'
 import { http } from '@/core/http'
 import { loadSession } from '@/core/session'
+import { ApiError, apiRequest, parseBlobApiResponse, type ApiResponse } from '@/api/adapters/request'
 import type {
-  ApiResponse,
   ApprovalDelegateInfo,
   ApprovalInstanceInfo,
   ApprovalTaskInfo,
@@ -36,43 +36,6 @@ import type {
   SupportSubscriptionItem,
 } from '@/types/support'
 
-/** 发起请求并解包 ApiResponse；业务失败 / 网络异常统一抛出可读消息。 */
-async function request<T>(config: {
-  method: 'get' | 'post' | 'put' | 'delete'
-  url: string
-  data?: unknown
-  params?: Record<string, unknown>
-}): Promise<T> {
-  try {
-    const response = await http.request<ApiResponse<T>>({
-      method: config.method,
-      url: config.url,
-      data: config.data,
-      params: config.params,
-    })
-    const body = response.data
-    if (!body.success) {
-      throw new Error(body.message ?? body.code ?? '请求失败')
-    }
-    return body.data as T
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      const body = error.response?.data as ApiResponse<unknown> | undefined
-      const message = body?.message ?? body?.code
-      if (typeof message === 'string' && message.length > 0) {
-        throw new Error(message)
-      }
-      if (error.code === 'ECONNABORTED') {
-        throw new Error('请求超时，请稍后重试')
-      }
-      if (!error.response) {
-        throw new Error('无法连接服务，请确认后端服务已启动')
-      }
-    }
-    throw error
-  }
-}
-
 /* ============================================================
  * 审批中心（/api/support/approvals）
  * ============================================================ */
@@ -81,47 +44,47 @@ const APPROVALS = '/api/support/approvals'
 
 /** 当前用户待办列表。 */
 export function fetchApprovalTodos(): Promise<ApprovalTaskInfo[]> {
-  return request<ApprovalTaskInfo[]>({ method: 'get', url: `${APPROVALS}/my-todos` })
+  return apiRequest<ApprovalTaskInfo[]>({ method: 'get', url: `${APPROVALS}/my-todos` })
 }
 
 /** 当前用户已办列表。 */
 export function fetchApprovalDone(): Promise<ApprovalTaskInfo[]> {
-  return request<ApprovalTaskInfo[]>({ method: 'get', url: `${APPROVALS}/my-done` })
+  return apiRequest<ApprovalTaskInfo[]>({ method: 'get', url: `${APPROVALS}/my-done` })
 }
 
 /** 当前用户发起的审批列表。 */
 export function fetchApprovalInitiated(): Promise<ApprovalInstanceInfo[]> {
-  return request<ApprovalInstanceInfo[]>({ method: 'get', url: `${APPROVALS}/my-initiated` })
+  return apiRequest<ApprovalInstanceInfo[]>({ method: 'get', url: `${APPROVALS}/my-initiated` })
 }
 
 /** 审批实例详情。 */
 export function fetchApprovalInstance(instanceId: string): Promise<ApprovalInstanceInfo> {
-  return request<ApprovalInstanceInfo>({ method: 'get', url: `${APPROVALS}/instance/${encodeURIComponent(instanceId)}` })
+  return apiRequest<ApprovalInstanceInfo>({ method: 'get', url: `${APPROVALS}/instance/${encodeURIComponent(instanceId)}` })
 }
 
 /** 流程定义摘要列表。 */
 export function fetchApprovalFlows(): Promise<SupportFlowSummary[]> {
-  return request<SupportFlowSummary[]>({ method: 'get', url: `${APPROVALS}/flows` })
+  return apiRequest<SupportFlowSummary[]>({ method: 'get', url: `${APPROVALS}/flows` })
 }
 
 /** 审批通过。 */
 export function approveApproval(instanceId: string, comment?: string | null): Promise<void> {
-  return request<void>({ method: 'post', url: `${APPROVALS}/${encodeURIComponent(instanceId)}/approve`, data: { comment } })
+  return apiRequest<void>({ method: 'post', url: `${APPROVALS}/${encodeURIComponent(instanceId)}/approve`, data: { comment } })
 }
 
 /** 审批驳回。 */
 export function rejectApproval(instanceId: string, reason: string): Promise<void> {
-  return request<void>({ method: 'post', url: `${APPROVALS}/${encodeURIComponent(instanceId)}/reject`, data: { reason } })
+  return apiRequest<void>({ method: 'post', url: `${APPROVALS}/${encodeURIComponent(instanceId)}/reject`, data: { reason } })
 }
 
 /** 发起人撤回。 */
 export function withdrawApproval(instanceId: string, reason?: string | null): Promise<void> {
-  return request<void>({ method: 'post', url: `${APPROVALS}/${encodeURIComponent(instanceId)}/withdraw`, data: { reason } })
+  return apiRequest<void>({ method: 'post', url: `${APPROVALS}/${encodeURIComponent(instanceId)}/withdraw`, data: { reason } })
 }
 
 /** 催办。 */
 export function urgeApproval(instanceId: string, message?: string | null): Promise<void> {
-  return request<void>({ method: 'post', url: `${APPROVALS}/${encodeURIComponent(instanceId)}/urge`, data: { message } })
+  return apiRequest<void>({ method: 'post', url: `${APPROVALS}/${encodeURIComponent(instanceId)}/urge`, data: { message } })
 }
 
 /** 加签。 */
@@ -132,7 +95,7 @@ export function addSignApproval(
   reason?: string | null,
   isBeforeCurrent = true,
 ): Promise<void> {
-  return request<void>({
+  return apiRequest<void>({
     method: 'post',
     url: `${APPROVALS}/${encodeURIComponent(instanceId)}/tasks/${encodeURIComponent(taskId)}/add-sign`,
     data: { addSignerUserId, reason, isBeforeCurrent },
@@ -146,7 +109,7 @@ export function transferApproval(
   toUserId: string,
   reason?: string | null,
 ): Promise<void> {
-  return request<void>({
+  return apiRequest<void>({
     method: 'post',
     url: `${APPROVALS}/${encodeURIComponent(instanceId)}/tasks/${encodeURIComponent(taskId)}/transfer`,
     data: { toUserId, reason },
@@ -155,17 +118,17 @@ export function transferApproval(
 
 /** 我的委托列表。 */
 export function fetchApprovalDelegates(): Promise<ApprovalDelegateInfo[]> {
-  return request<ApprovalDelegateInfo[]>({ method: 'get', url: `${APPROVALS}/delegates` })
+  return apiRequest<ApprovalDelegateInfo[]>({ method: 'get', url: `${APPROVALS}/delegates` })
 }
 
 /** 创建委托。 */
 export function createApprovalDelegate(payload: CreateDelegateRequest): Promise<string> {
-  return request<string>({ method: 'post', url: `${APPROVALS}/delegates`, data: payload })
+  return apiRequest<string>({ method: 'post', url: `${APPROVALS}/delegates`, data: payload })
 }
 
 /** 撤销委托。 */
 export function revokeApprovalDelegate(delegateId: string): Promise<void> {
-  return request<void>({ method: 'post', url: `${APPROVALS}/delegates/${encodeURIComponent(delegateId)}/revoke` })
+  return apiRequest<void>({ method: 'post', url: `${APPROVALS}/delegates/${encodeURIComponent(delegateId)}/revoke` })
 }
 
 /* ============================================================
@@ -181,7 +144,7 @@ export function fetchMessageInbox(params: {
   keyword?: string | null
   unreadOnly?: boolean
 }): Promise<SupportPage<SupportInboxItem>> {
-  return request<SupportPage<SupportInboxItem>>({ method: 'get', url: `${MESSAGES}/inbox`, params })
+  return apiRequest<SupportPage<SupportInboxItem>>({ method: 'get', url: `${MESSAGES}/inbox`, params })
 }
 
 /** 已发送分页。 */
@@ -190,42 +153,42 @@ export function fetchMessageSent(params: {
   pageSize: number
   keyword?: string | null
 }): Promise<SupportPage<MessageInfo>> {
-  return request<SupportPage<MessageInfo>>({ method: 'get', url: `${MESSAGES}/sent`, params })
+  return apiRequest<SupportPage<MessageInfo>>({ method: 'get', url: `${MESSAGES}/sent`, params })
 }
 
 /** 未读数。 */
 export function fetchUnreadCount(): Promise<number> {
-  return request<number>({ method: 'get', url: `${MESSAGES}/unread-count` })
+  return apiRequest<number>({ method: 'get', url: `${MESSAGES}/unread-count` })
 }
 
 /** 标记单条已读。 */
 export function markMessageRead(inboxId: string): Promise<void> {
-  return request<void>({ method: 'post', url: `${MESSAGES}/inbox/${encodeURIComponent(inboxId)}/read` })
+  return apiRequest<void>({ method: 'post', url: `${MESSAGES}/inbox/${encodeURIComponent(inboxId)}/read` })
 }
 
 /** 全部已读。 */
 export function markAllMessagesRead(): Promise<void> {
-  return request<void>({ method: 'post', url: `${MESSAGES}/read-all` })
+  return apiRequest<void>({ method: 'post', url: `${MESSAGES}/read-all` })
 }
 
 /** 删除收件箱项。 */
 export function deleteInboxItem(inboxId: string): Promise<void> {
-  return request<void>({ method: 'post', url: `${MESSAGES}/inbox/${encodeURIComponent(inboxId)}/delete` })
+  return apiRequest<void>({ method: 'post', url: `${MESSAGES}/inbox/${encodeURIComponent(inboxId)}/delete` })
 }
 
 /** 记录全局项状态（READ / ACCEPTED / DELETED）。 */
 export function markGlobalItemState(globalId: string, state: string): Promise<void> {
-  return request<void>({ method: 'post', url: `${MESSAGES}/global/${encodeURIComponent(globalId)}/state`, data: { state } })
+  return apiRequest<void>({ method: 'post', url: `${MESSAGES}/global/${encodeURIComponent(globalId)}/state`, data: { state } })
 }
 
 /** 订阅清单。 */
 export function fetchSubscriptions(): Promise<SupportSubscriptionItem[]> {
-  return request<SupportSubscriptionItem[]>({ method: 'get', url: `${MESSAGES}/subscriptions` })
+  return apiRequest<SupportSubscriptionItem[]>({ method: 'get', url: `${MESSAGES}/subscriptions` })
 }
 
 /** 切换订阅开关。 */
 export function toggleSubscription(msgType: string, enabled: boolean): Promise<void> {
-  return request<void>({
+  return apiRequest<void>({
     method: 'post',
     url: `${MESSAGES}/subscriptions/${encodeURIComponent(msgType)}/toggle`,
     data: { enabled },
@@ -234,12 +197,12 @@ export function toggleSubscription(msgType: string, enabled: boolean): Promise<v
 
 /** 渠道发送记录。 */
 export function fetchMessageSendLogs(messageId: string): Promise<SupportSendLogItem[]> {
-  return request<SupportSendLogItem[]>({ method: 'get', url: `${MESSAGES}/sent/${encodeURIComponent(messageId)}/send-logs` })
+  return apiRequest<SupportSendLogItem[]>({ method: 'get', url: `${MESSAGES}/sent/${encodeURIComponent(messageId)}/send-logs` })
 }
 
 /** 人工重试投递。 */
 export function retryMessageDelivery(messageId: string): Promise<void> {
-  return request<void>({ method: 'post', url: `${MESSAGES}/sent/${encodeURIComponent(messageId)}/retry` })
+  return apiRequest<void>({ method: 'post', url: `${MESSAGES}/sent/${encodeURIComponent(messageId)}/retry` })
 }
 
 /* ============================================================
@@ -250,17 +213,17 @@ const JOBS = '/api/support/jobs'
 
 /** 触发任务。 */
 export function triggerJob(payload: JobTriggerPayload): Promise<JobSubmitResult> {
-  return request<JobSubmitResult>({ method: 'post', url: `${JOBS}/trigger`, data: payload })
+  return apiRequest<JobSubmitResult>({ method: 'post', url: `${JOBS}/trigger`, data: payload })
 }
 
 /** 取消任务。 */
 export function cancelJob(executionId: string): Promise<void> {
-  return request<void>({ method: 'post', url: `${JOBS}/${encodeURIComponent(executionId)}/cancel` })
+  return apiRequest<void>({ method: 'post', url: `${JOBS}/${encodeURIComponent(executionId)}/cancel` })
 }
 
 /** 查询任务状态。 */
 export function fetchJobStatus(executionId: string): Promise<JobSubmitResult> {
-  return request<JobSubmitResult>({ method: 'get', url: `${JOBS}/${encodeURIComponent(executionId)}` })
+  return apiRequest<JobSubmitResult>({ method: 'get', url: `${JOBS}/${encodeURIComponent(executionId)}` })
 }
 
 /** 执行历史分页。 */
@@ -272,22 +235,22 @@ export function fetchJobHistory(params: {
   pageIndex: number
   pageSize: number
 }): Promise<SupportPage<JobExecutionItem>> {
-  return request<SupportPage<JobExecutionItem>>({ method: 'get', url: `${JOBS}/history`, params })
+  return apiRequest<SupportPage<JobExecutionItem>>({ method: 'get', url: `${JOBS}/history`, params })
 }
 
 /** 执行日志。 */
 export function fetchJobLogs(executionId: string): Promise<JobExecutionLogEntry[]> {
-  return request<JobExecutionLogEntry[]>({ method: 'get', url: `${JOBS}/${encodeURIComponent(executionId)}/logs` })
+  return apiRequest<JobExecutionLogEntry[]>({ method: 'get', url: `${JOBS}/${encodeURIComponent(executionId)}/logs` })
 }
 
 /** 任务定义清单。 */
 export function fetchJobDefinitions(): Promise<JobDefinitionItem[]> {
-  return request<JobDefinitionItem[]>({ method: 'get', url: `${JOBS}/definitions` })
+  return apiRequest<JobDefinitionItem[]>({ method: 'get', url: `${JOBS}/definitions` })
 }
 
 /** 启停任务定义。 */
 export function toggleJobDefinition(taskCode: string, enabled: boolean): Promise<void> {
-  return request<void>({
+  return apiRequest<void>({
     method: 'post',
     url: `${JOBS}/definitions/${encodeURIComponent(taskCode)}/toggle`,
     data: { enabled },
@@ -302,7 +265,7 @@ const FILES = '/api/support/files'
 
 /** 查询文件元数据。 */
 export function fetchFileMetadata(id: string): Promise<SupportFileMetadata> {
-  return request<SupportFileMetadata>({ method: 'get', url: `${FILES}/metadata/${encodeURIComponent(id)}` })
+  return apiRequest<SupportFileMetadata>({ method: 'get', url: `${FILES}/metadata/${encodeURIComponent(id)}` })
 }
 
 /** 目录列表。 */
@@ -310,22 +273,57 @@ export function fetchFileList(parentId?: string | null, keyword?: string | null)
   const params: Record<string, unknown> = {}
   if (parentId) params.parentId = parentId
   if (keyword) params.keyword = keyword
-  return request<SupportFileMetadata[]>({ method: 'get', url: `${FILES}/list`, params })
+  return apiRequest<SupportFileMetadata[]>({ method: 'get', url: `${FILES}/list`, params })
 }
 
 /** 回收站列表。 */
 export function fetchRecycleList(): Promise<SupportFileMetadata[]> {
-  return request<SupportFileMetadata[]>({ method: 'get', url: `${FILES}/recycle/list` })
+  return apiRequest<SupportFileMetadata[]>({ method: 'get', url: `${FILES}/recycle/list` })
 }
 
 /** 软删进回收站。 */
 export function deleteFile(id: string): Promise<SupportFileMetadata> {
-  return request<SupportFileMetadata>({ method: 'delete', url: `${FILES}/${encodeURIComponent(id)}` })
+  return apiRequest<SupportFileMetadata>({ method: 'delete', url: `${FILES}/${encodeURIComponent(id)}` })
 }
 
 /** 从回收站还原。 */
 export function restoreFile(id: string): Promise<SupportFileMetadata> {
-  return request<SupportFileMetadata>({ method: 'post', url: `${FILES}/${encodeURIComponent(id)}/restore` })
+  return apiRequest<SupportFileMetadata>({ method: 'post', url: `${FILES}/${encodeURIComponent(id)}/restore` })
+}
+
+/** 回收站彻底删除（物理清理，不可恢复）。 */
+export function purgeFile(id: string): Promise<void> {
+  return apiRequest<void>({ method: 'delete', url: `${FILES}/${encodeURIComponent(id)}/purge` })
+}
+
+/**
+ * 带鉴权读取文件内容（预览 / 下载同一内容流）。
+ * 说明：新标签页无法携带 Bearer Token，必须经共享客户端取 Blob 后本地生成对象 URL；
+ *       失败时后端仍返回 ApiResponse JSON（Blob），优先透传后端 message。
+ */
+export async function fetchFileBlob(id: string, mode: 'preview' | 'download'): Promise<Blob> {
+  try {
+    const response = await http.get(`${FILES}/${mode}/${encodeURIComponent(id)}`, {
+      responseType: 'blob',
+    })
+    return response.data as Blob
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status
+      const body = await parseBlobApiResponse(error.response?.data)
+      if (body) {
+        throw new ApiError(body.message ?? body.code ?? '文件读取失败', body.code ?? undefined, status)
+      }
+      if (status === 403) {
+        throw new ApiError('无权访问该文件', 'FORBIDDEN', 403)
+      }
+      if (!error.response) {
+        throw new ApiError('无法连接服务，请确认后端服务已启动', 'NETWORK_ERROR')
+      }
+      throw new ApiError(`文件读取失败：HTTP ${status ?? '未知'}`, status ? `HTTP_${status}` : undefined, status)
+    }
+    throw error
+  }
 }
 
 /** 上传文件（XHR，支持 progress）。 */
@@ -350,21 +348,27 @@ export async function uploadFile(
     }
     xhr.onload = () => {
       if (xhr.status < 200 || xhr.status >= 300) {
-        reject(new Error(`上传失败：HTTP ${xhr.status}`))
+        // 非 2xx：后端统一错误信封（ApiResponse JSON），透传 message/code/status
+        try {
+          const errBody = JSON.parse(xhr.responseText) as ApiResponse<unknown>
+          reject(new ApiError(errBody.message ?? errBody.code ?? `上传失败：HTTP ${xhr.status}`, errBody.code ?? undefined, xhr.status, errBody.errors ?? undefined))
+        } catch {
+          reject(new ApiError(`上传失败：HTTP ${xhr.status}`, `HTTP_${xhr.status}`, xhr.status))
+        }
         return
       }
       try {
         const body = JSON.parse(xhr.responseText) as ApiResponse<SupportFileUploadResult>
         if (!body.success) {
-          reject(new Error(body.message ?? '上传失败'))
+          reject(new ApiError(body.message ?? '上传失败', body.code ?? undefined, xhr.status, body.errors ?? undefined))
           return
         }
         resolve(body.data as SupportFileUploadResult)
       } catch {
-        reject(new Error('上传响应不是合法 JSON'))
+        reject(new ApiError('上传响应不是合法 JSON'))
       }
     }
-    xhr.onerror = () => reject(new Error('网络异常，上传中断'))
+    xhr.onerror = () => reject(new ApiError('网络异常，上传中断', 'NETWORK_ERROR'))
     xhr.send(formData)
   })
 }
@@ -377,32 +381,32 @@ const PRINTING = '/api/support/printing/templates'
 
 /** 模板清单。 */
 export function fetchPrintTemplates(): Promise<PrintTemplateView[]> {
-  return request<PrintTemplateView[]>({ method: 'get', url: PRINTING })
+  return apiRequest<PrintTemplateView[]>({ method: 'get', url: PRINTING })
 }
 
 /** 按编码查最新版本。 */
 export function fetchPrintTemplateByCode(code: string): Promise<PrintTemplateView | null> {
-  return request<PrintTemplateView | null>({ method: 'get', url: `${PRINTING}/code/${encodeURIComponent(code)}` })
+  return apiRequest<PrintTemplateView | null>({ method: 'get', url: `${PRINTING}/code/${encodeURIComponent(code)}` })
 }
 
 /** 新建模板。 */
 export function createPrintTemplate(payload: PrintTemplateCreatePayload): Promise<PrintTemplateView> {
-  return request<PrintTemplateView>({ method: 'post', url: PRINTING, data: payload })
+  return apiRequest<PrintTemplateView>({ method: 'post', url: PRINTING, data: payload })
 }
 
 /** 更新模板。 */
 export function updatePrintTemplate(id: string, payload: PrintTemplateUpdatePayload): Promise<PrintTemplateView> {
-  return request<PrintTemplateView>({ method: 'put', url: `${PRINTING}/${encodeURIComponent(id)}`, data: payload })
+  return apiRequest<PrintTemplateView>({ method: 'put', url: `${PRINTING}/${encodeURIComponent(id)}`, data: payload })
 }
 
 /** 启停模板。 */
 export function setPrintTemplateStatus(id: string, status: number): Promise<void> {
-  return request<void>({ method: 'post', url: `${PRINTING}/${encodeURIComponent(id)}/status`, data: { status } })
+  return apiRequest<void>({ method: 'post', url: `${PRINTING}/${encodeURIComponent(id)}/status`, data: { status } })
 }
 
 /** 渲染模板为 HTML。 */
 export function renderPrintTemplate(code: string, variables: Record<string, unknown>): Promise<string> {
-  return request<string>({ method: 'post', url: `${PRINTING}/code/${encodeURIComponent(code)}/render`, data: variables })
+  return apiRequest<string>({ method: 'post', url: `${PRINTING}/code/${encodeURIComponent(code)}/render`, data: variables })
 }
 
 /* ============================================================

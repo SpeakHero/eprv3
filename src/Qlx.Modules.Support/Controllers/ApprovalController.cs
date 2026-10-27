@@ -7,14 +7,12 @@
  *       操作人身份一律取自当前登录上下文（服务端可信，禁止前端传入用户 Id 冒充）
  */
 
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using OpenIddict.Validation.AspNetCore;
 using Qlx.Abstractions.Approvals;
-using Qlx.Abstractions.Constants;
 using Qlx.Abstractions.Domain;
 using Qlx.Abstractions.Exceptions;
+using Qlx.Abstractions.Constants;
 using Qlx.BuildingBlocks.Api;
 using Qlx.BuildingBlocks.Audit;
 using Qlx.Modules.Support.Services.Approvals;
@@ -29,7 +27,6 @@ namespace Qlx.Modules.Support.Controllers;
 /// <param name="approvalService">审批服务（2A 冻结契约能力）。</param>
 /// <param name="adminService">审批模块门面服务（流程定义 / 已办 / 委托）。</param>
 /// <param name="currentUser">当前用户上下文。</param>
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
 [ApiController]
 [Route("api/support/approvals")]
 public sealed class ApprovalController(

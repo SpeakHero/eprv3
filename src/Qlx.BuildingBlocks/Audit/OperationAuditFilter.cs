@@ -3,20 +3,22 @@
  * 作者：SpeakHero（491960352@qq.com）
  * 版本：1.0.0 beta
  * 创建时间：2026-10-23 12:30:00 +08:00 中国标准时间 星期五
+ * 修改时间：2026-10-26
  * 描述：方法级审计过滤器——[AuditOperation] 标注方法执行后写操作日志（成功 / 失败双留痕），无标注方法零开销跳过
  */
 
-using System.Globalization;
-using System.Text.Json;
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.Extensions.Logging;
+
 using Qlx.Abstractions.Audit;
 using Qlx.Abstractions.Domain;
 using Qlx.Abstractions.Serialization;
 using Qlx.Abstractions.Tenancy;
+
+using System.Globalization;
+using System.Text.Json;
 
 namespace Qlx.BuildingBlocks.Audit;
 
@@ -47,16 +49,16 @@ public sealed partial class OperationAuditFilter(
     /// <inheritdoc />
     public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
     {
-        var attribute = ResolveAttribute(context);
+        AuditOperationAttribute? attribute = ResolveAttribute(context);
         if (attribute is null)
         {
-            await next().ConfigureAwait(false);
+            _ = await next().ConfigureAwait(false);
             return;
         }
 
-        var executed = await next().ConfigureAwait(false);
+        ActionExecutedContext executed = await next().ConfigureAwait(false);
         var failed = executed.Exception is not null;
-        var operatedAt = DateTimeOffset.UtcNow;
+        DateTimeOffset operatedAt = DateTimeOffset.UtcNow;
 
         var entry = new OperationLogEntry(
             EventId: 0,
@@ -70,7 +72,7 @@ public sealed partial class OperationAuditFilter(
             TenantId: _tenantContext.TenantId ?? 0,
             TargetType: attribute.TargetType,
             TargetId: ResolveTargetId(attribute, context),
-            Metadata: BuildMetadata(context.HttpContext));
+            Metadata: BuildMetadata(context.HttpContext, _userContext.CurrentUserIp));
 
         // 审计失败不阻断业务（与 AuditSaveChangesInterceptor 一致）；异常分支先留失败痕再原样上抛
         try
@@ -91,11 +93,13 @@ public sealed partial class OperationAuditFilter(
 
     /// <summary>解析当前 Action 上的 <see cref="AuditOperationAttribute"/>（未标注返回 null）。</summary>
     private static AuditOperationAttribute? ResolveAttribute(ActionExecutingContext context)
-        => context.ActionDescriptor is ControllerActionDescriptor descriptor
-            ? descriptor.MethodInfo.GetCustomAttributes(inherit: true)
-                .OfType<AuditOperationAttribute>()
-                .FirstOrDefault()
-            : null;
+    {
+        return context.ActionDescriptor is ControllerActionDescriptor descriptor
+                ? descriptor.MethodInfo.GetCustomAttributes(inherit: true)
+                    .OfType<AuditOperationAttribute>()
+                    .FirstOrDefault()
+                : null;
+    }
 
     /// <summary>
     /// 解析审计目标 Id：按特性声明的参数名从 Action 参数 → 路由值顺序查找，
@@ -121,11 +125,16 @@ public sealed partial class OperationAuditFilter(
     }
 
     /// <summary>构建请求元数据（IP / HTTP 方法 / 路径，JSON 结构化）。</summary>
-    private static string BuildMetadata(HttpContext httpContext)
+    /// <param name="httpContext">当前请求上下文。</param>
+    /// <param name="clientIp">
+    /// 操作人 IP，统一取自 <see cref="ICurrentUserContext.CurrentUserIp"/>（由 IUserIpAddressProvider
+    /// 完成代理转发与 IPv4/IPv6 归一化），本过滤器不直接读取 RemoteIpAddress。
+    /// </param>
+    private static string BuildMetadata(HttpContext httpContext, string? clientIp)
     {
         var metadata = new
         {
-            ip = httpContext.Connection.RemoteIpAddress?.ToString(),
+            ip = clientIp,
             method = httpContext.Request.Method,
             path = httpContext.Request.Path.Value,
         };
@@ -133,7 +142,7 @@ public sealed partial class OperationAuditFilter(
     }
 
     [LoggerMessage(
-        Level = Microsoft.Extensions.Logging.LogLevel.Warning,
+        Level =LogLevel.Warning,
         Message = "方法级审计写入失败（模块 {Module}，操作 {Operation}），不阻断业务")]
     private partial void LogAuditWriteFailed(string module, string operation, Exception exception);
 }

@@ -110,10 +110,9 @@ public sealed partial class TenantMemberRoleService(
             var roles = await query.ListMemberRolesAsync(member.Id, tenantId, cancellationToken)
                 .ConfigureAwait(false);
 
-            return roles
+            return [.. roles
                 .Select(role => new MemberRoleOptionItem(
-                    obfuscator.Encode(role.RoleId), role.RoleCode, role.RoleName, role.IsBuiltin))
-                .ToList();
+                    obfuscator.Encode(role.RoleId), role.RoleCode, role.RoleName, role.IsBuiltin))];
         }
         finally
         {

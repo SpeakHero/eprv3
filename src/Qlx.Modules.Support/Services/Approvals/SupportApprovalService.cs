@@ -3,6 +3,7 @@
  * 作者：SpeakHero（491960352@qq.com）
  * 版本：1.0.0 beta
  * 创建时间：2026-10-22 20:00:00 +08:00 中国标准时间 星期四
+ * 修改时间：2026-10-26 22:00:00 +08:00 中国标准时间 星期一
  * 描述：审批中心服务（2A 冻结契约 IApprovalService 实现）——发起/通过/驳回/撤回/加签/转办/催办，
  *       会签全通过（R4）、或签首人决、条件分支求值（R3）、委托留痕（R9）、终态事件驱动（R11）
  */
@@ -76,7 +77,7 @@ public sealed partial class SupportApprovalService(
         var orgId = bizData.TryGetValue(ApprovalCompositeApproverResolver.BizDataKeyOrgId, out var orgValue)
             && long.TryParse(orgValue?.ToString(), out var orgParsed) ? orgParsed : 0;
 
-        var flow = await _flowRegistry.ResolveEnabledAsync(request.BizType, orgId, cancellationToken).ConfigureAwait(false)
+        var flow = await ResolveStartFlowAsync(request, orgId, cancellationToken).ConfigureAwait(false)
             ?? throw new NotFoundException("审批流程定义", $"{request.BizType}（组织 {orgId}）");
         ApprovalFlowRegistry.EnsureBranchDefaults(flow);
 
@@ -113,6 +114,39 @@ public sealed partial class SupportApprovalService(
         await CaptureOperationAsync(instance, ApprovalLogActions.Submit, request.InitiatorUserId, now, cancellationToken)
             .ConfigureAwait(false);
         return instance.Id.ToString(s_culture);
+    }
+
+    /// <summary>
+    /// 发起时解析流程：显式 <see cref="StartApprovalRequest.ApprovalDefinitionCode"/> 优先
+    /// （同单据类型可挂多条流程，如调拨「同公司 / 跨公司」、成本调整「普通 / 大额」，
+    /// 此时 biz_type 无法唯一确定流程）；未指定或未启用时回退 biz_type + 组织唯一启用解析（R1）。
+    /// </summary>
+    /// <param name="request">发起请求。</param>
+    /// <param name="orgId">发起组织 Id。</param>
+    /// <param name="cancellationToken">取消令牌。</param>
+    /// <returns>流程聚合（未命中返回 null）。</returns>
+    /// <exception cref="ConflictException">显式流程与请求单据类型不一致时抛出。</exception>
+    private async Task<EnabledApprovalFlow?> ResolveStartFlowAsync(
+        StartApprovalRequest request, long orgId, CancellationToken cancellationToken)
+    {
+        if (!string.IsNullOrWhiteSpace(request.ApprovalDefinitionCode))
+        {
+            var pinned = await _flowRegistry
+                .ResolveByCodeAsync(request.ApprovalDefinitionCode, cancellationToken).ConfigureAwait(false);
+            if (pinned is not null)
+            {
+                if (!string.Equals(pinned.Definition.BizType, request.BizType, StringComparison.Ordinal))
+                {
+                    throw new ConflictException(
+                        $"流程定义 {request.ApprovalDefinitionCode} 的单据类型为 {pinned.Definition.BizType}，与请求单据类型 {request.BizType} 不一致。");
+                }
+
+                return pinned;
+            }
+        }
+
+        return await _flowRegistry.ResolveEnabledAsync(request.BizType, orgId, cancellationToken)
+            .ConfigureAwait(false);
     }
 
     // ============ 通过 ============

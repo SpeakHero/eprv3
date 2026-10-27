@@ -8,9 +8,7 @@
  */
 
 using System.Net.Mime;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenIddict.Validation.AspNetCore;
 using Qlx.BuildingBlocks.Api;
 using Qlx.Modules.Portal.Dtos;
 using Qlx.Modules.Portal.Services;
@@ -28,7 +26,6 @@ namespace Qlx.Modules.Portal.Controllers;
 /// </para>
 /// </summary>
 [ApiController]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
 [Route("api/portal/system-parameters")]
 [Produces(MediaTypeNames.Application.Json)]
 public sealed class SystemParametersController(ISystemParameterAdminService service) : ControllerBase

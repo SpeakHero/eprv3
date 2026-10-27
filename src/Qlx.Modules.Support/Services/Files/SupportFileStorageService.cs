@@ -88,7 +88,7 @@ public sealed class SupportFileStorageService(
             [FileJobParams.Keyword] = keyword,
             [FileJobParams.OperatorId] = OperatorId,
         }, cancellationToken).ConfigureAwait(false);
-        return payload.Items.Select(ToDto).ToList();
+        return [.. payload.Items.Select(ToDto)];
     }
 
     /// <inheritdoc />
@@ -108,13 +108,17 @@ public sealed class SupportFileStorageService(
         => ExecuteMetadataAsync(FileTaskCodes.Restore, BuildFileParams(fileId), cancellationToken);
 
     /// <inheritdoc />
+    public Task<SupportFileMetadata> PurgeAsync(long fileId, CancellationToken cancellationToken)
+        => ExecuteMetadataAsync(FileTaskCodes.Purge, BuildFileParams(fileId), cancellationToken);
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<SupportFileMetadata>> ListRecycleAsync(CancellationToken cancellationToken)
     {
         var payload = await ExecuteAsync<FileListJobPayload>(FileTaskCodes.RecycleList, new Dictionary<string, object?>
         {
             [FileJobParams.OperatorId] = OperatorId,
         }, cancellationToken).ConfigureAwait(false);
-        return payload.Items.Select(ToDto).ToList();
+        return [.. payload.Items.Select(ToDto)];
     }
 
     /// <inheritdoc />

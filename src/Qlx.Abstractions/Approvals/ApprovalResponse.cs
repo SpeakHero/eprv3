@@ -7,6 +7,10 @@
  * 描述：审批响应 / 详情 record
  */
 
+using Microsoft.Extensions.Logging;
+
+using System.ComponentModel;
+
 namespace Qlx.Abstractions.Approvals;
 
 /// <summary>
@@ -45,21 +49,27 @@ public sealed record ApprovalTaskInfo(
 public enum ApprovalTaskStatus
 {
     /// <summary>待处理。</summary>
+    [Description("待处理")]
     Pending = 0,
 
     /// <summary>已通过。</summary>
+    [Description("已通过")]    
     Approved = 1,
 
     /// <summary>已驳回。</summary>
+    [Description("已驳回")]
     Rejected = 2,
 
     /// <summary>已转交。</summary>
+    [Description("已转交")]
     Transferred = 3,
 
     /// <summary>已加签。</summary>
+    [Description("已加签")]
     AddSigned = 4,
 
     /// <summary>已撤销。</summary>
+    [Description("已撤销")]
     Canceled = 5
 }
 

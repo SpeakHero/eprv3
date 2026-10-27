@@ -20,8 +20,12 @@ const router = useRouter()
 /** 当前展开的一级菜单编码。 */
 const activeMenu = ref('')
 
-/** 模块是否已授权（许可信息未下发时按全量展示）。 */
+/** 模块是否已授权（许可信息未下发时按全量展示；portal 模块仅门户管理模式可见）。 */
 function licensed(moduleCode: string): boolean {
+  // X-4 整改：门户管理模块入口仅门户管理模式展示——租户上下文即使许可误下发也不得出现
+  if (moduleCode === 'portal' && !auth.portalAdminMode) {
+    return false
+  }
   return auth.licensedModules.length === 0 || auth.isModuleLicensed(moduleCode)
 }
 
@@ -65,6 +69,30 @@ function close(): void {
   activeMenu.value = ''
 }
 
+/* ============ 移动端抽屉导航 ============ */
+const mobileNavOpen = ref(false)
+const mobileMenu = ref('')
+
+/** 移动端：按一级菜单取已授权模块目录。 */
+function mobileModules(menuCode: string): NavModule[] {
+  const menu = topMenus.find((item) => item.code === menuCode)
+  if (!menu) {
+    return []
+  }
+  return navModules.filter(
+    (module) => menu.modules.includes(module.code) && licensed(module.code),
+  )
+}
+
+function toggleMobileMenu(menuCode: string): void {
+  mobileMenu.value = mobileMenu.value === menuCode ? '' : menuCode
+}
+
+function openMobileNav(): void {
+  mobileNavOpen.value = true
+  mobileMenu.value = ''
+}
+
 function notifyBuilding(): void {
   ElMessage.info('信息中心将在后续阶段接入')
 }
@@ -101,6 +129,15 @@ async function onCommand(command: string): Promise<void> {
       <RouterLink to="/workbench" class="site-header__brand" aria-label="返回工作台">
         <BrandMark theme="dark" compact />
       </RouterLink>
+
+      <button
+        type="button"
+        class="site-header__toggle"
+        aria-label="打开导航菜单"
+        @click="openMobileNav"
+      >
+        <AppIcon name="Menu" :size="18" />
+      </button>
 
       <nav class="site-header__nav" aria-label="主导航">
         <div
@@ -199,6 +236,60 @@ async function onCommand(command: string): Promise<void> {
         </div>
       </div>
     </Transition>
+
+    <!-- 移动端导航抽屉（≤860px） -->
+    <el-drawer
+      v-model="mobileNavOpen"
+      direction="rtl"
+      size="min(86vw, 360px)"
+      title="导航菜单"
+      append-to-body
+      class="site-header__drawer"
+    >
+      <div class="mobile-nav">
+        <RouterLink to="/workbench" class="mobile-nav__workbench" @click="mobileNavOpen = false">
+          <AppIcon name="House" :size="15" />
+          <span>工作台</span>
+        </RouterLink>
+        <section v-for="menu in visibleMenus.filter((item) => item.code !== 'workbench')" :key="menu.code" class="mobile-nav__menu">
+          <button
+            type="button"
+            class="mobile-nav__head"
+            :aria-expanded="mobileMenu === menu.code"
+            @click="toggleMobileMenu(menu.code)"
+          >
+            <span>{{ menu.name }}</span>
+            <AppIcon
+              :name="mobileMenu === menu.code ? 'ArrowDown' : 'ArrowRight'"
+              :size="13"
+            />
+          </button>
+          <div v-if="mobileMenu === menu.code" class="mobile-nav__body">
+            <div v-for="module in mobileModules(menu.code)" :key="module.code" class="mobile-nav__module">
+              <p class="mobile-nav__module-name">{{ module.name }}</p>
+              <div v-for="group in module.groups" :key="group.name" class="mobile-nav__group">
+                <p class="mobile-nav__group-name">{{ group.name }}</p>
+                <a
+                  v-for="item in group.items"
+                  :key="item.code"
+                  class="mobile-nav__link"
+                  :href="`/module/${module.code}/${item.code}`"
+                  target="_blank"
+                  rel="noopener"
+                  @click="mobileNavOpen = false"
+                >
+                  <AppIcon :name="item.icon" :size="14" />
+                  <span>{{ item.name }}</span>
+                </a>
+              </div>
+            </div>
+            <p v-if="mobileModules(menu.code).length === 0" class="mobile-nav__empty">
+              该栏目暂无已开通模块
+            </p>
+          </div>
+        </section>
+      </div>
+    </el-drawer>
   </header>
 </template>
 
@@ -477,5 +568,109 @@ async function onCommand(command: string): Promise<void> {
   .user-btn__meta {
     display: none;
   }
+}
+
+/* 平板/手机：一级导航收进抽屉，顶栏只保留品牌 + 汉堡 + 用户操作 */
+.site-header__toggle {
+  display: none;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: var(--qlx-radius-sm);
+  background: transparent;
+  color: #fff;
+}
+
+@media (max-width: 860px) {
+  .site-header__toggle {
+    display: inline-flex;
+  }
+
+  .site-header__nav {
+    display: none;
+  }
+}
+</style>
+
+<style>
+/* el-drawer 经 teleport 挂载到 body，scoped 不可达，故用专属类全局样式 */
+.site-header__drawer .el-drawer__header {
+  margin-bottom: var(--qlx-space-2);
+  color: var(--qlx-ink-800);
+  font-family: var(--qlx-font-serif);
+}
+
+.site-header__drawer .el-drawer__body {
+  padding-top: 0;
+}
+
+.mobile-nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--qlx-space-2);
+  padding-bottom: var(--qlx-space-6);
+}
+
+.mobile-nav__workbench,
+.mobile-nav__head {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: var(--qlx-space-2);
+  padding: 10px var(--qlx-space-3);
+  border: 1px solid var(--qlx-line);
+  border-radius: var(--qlx-radius-sm);
+  background: var(--qlx-surface);
+  color: var(--qlx-ink-800);
+  font-size: var(--qlx-text-sm);
+  text-align: left;
+}
+
+.mobile-nav__head {
+  justify-content: space-between;
+}
+
+.mobile-nav__body {
+  padding: var(--qlx-space-2) 0 var(--qlx-space-2) var(--qlx-space-3);
+  border-left: 2px solid var(--qlx-brand-100);
+  margin-top: var(--qlx-space-2);
+}
+
+.mobile-nav__module + .mobile-nav__module {
+  margin-top: var(--qlx-space-3);
+}
+
+.mobile-nav__module-name {
+  color: var(--qlx-brand-800);
+  font-size: var(--qlx-text-sm);
+  font-weight: 600;
+}
+
+.mobile-nav__group-name {
+  margin-top: var(--qlx-space-2);
+  color: var(--qlx-ink-400);
+  font-size: var(--qlx-text-xs);
+}
+
+.mobile-nav__link {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px var(--qlx-space-2);
+  border-radius: var(--qlx-radius-xs);
+  color: var(--qlx-ink-700);
+  font-size: var(--qlx-text-sm);
+}
+
+.mobile-nav__link:active {
+  background: var(--qlx-brand-50);
+}
+
+.mobile-nav__empty {
+  padding: var(--qlx-space-2) 0;
+  color: var(--qlx-ink-400);
+  font-size: var(--qlx-text-xs);
 }
 </style>

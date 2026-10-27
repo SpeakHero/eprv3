@@ -52,7 +52,7 @@ public sealed class InMemoryAuditService : IAuditService
         if (!string.IsNullOrWhiteSpace(changedBy)) q = q.Where(e => string.Equals(e.ChangedBy, changedBy, StringComparison.Ordinal));
         if (from.HasValue) q = q.Where(e => e.ChangedAt >= from.Value);
         if (toTime.HasValue) q = q.Where(e => e.ChangedAt <= toTime.Value);
-        return Task.FromResult<IReadOnlyList<AuditLogEntry>>(q.ToList());
+        return Task.FromResult<IReadOnlyList<AuditLogEntry>>([.. q]);
     }
 
     /// <inheritdoc />
@@ -67,7 +67,7 @@ public sealed class InMemoryAuditService : IAuditService
         if (!string.IsNullOrWhiteSpace(operatedBy)) q = q.Where(e => string.Equals(e.OperatedBy, operatedBy, StringComparison.Ordinal));
         if (from.HasValue) q = q.Where(e => e.OperatedAt >= from.Value);
         if (toTime.HasValue) q = q.Where(e => e.OperatedAt <= toTime.Value);
-        return Task.FromResult<IReadOnlyList<OperationLogEntry>>(q.ToList());
+        return Task.FromResult<IReadOnlyList<OperationLogEntry>>([.. q]);
     }
 
     /// <inheritdoc />
@@ -78,6 +78,6 @@ public sealed class InMemoryAuditService : IAuditService
             .Where(e => string.Equals(e.OperatedBy, operatedBy, StringComparison.Ordinal));
         if (!string.IsNullOrWhiteSpace(moduleCode)) q = q.Where(e => string.Equals(e.ModuleCode, moduleCode, StringComparison.Ordinal));
         return Task.FromResult<IReadOnlyList<OperationLogEntry>>(
-            q.OrderByDescending(e => e.OperatedAt).Take(take).ToList());
+            [.. q.OrderByDescending(e => e.OperatedAt).Take(take)]);
     }
 }

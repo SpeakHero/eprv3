@@ -10,9 +10,7 @@
  */
 
 using System.Net.Mime;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenIddict.Validation.AspNetCore;
 using Qlx.Abstractions.Modules;
 using Qlx.BuildingBlocks.Api;
 using Qlx.Modules.Portal.Services;
@@ -28,7 +26,6 @@ namespace Qlx.Modules.Portal.Controllers;
 /// </summary>
 /// <param name="menuQuery">菜单扁平查询服务。</param>
 [ApiController]
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
 [Route("api/portal/menus")]
 public sealed class PortalMenuController(MenuQueryService menuQuery) : ControllerBase
 {

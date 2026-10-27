@@ -57,11 +57,10 @@ public sealed class SupportFileAclService(
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return entries
+        return [.. entries
             .Select(e => new FileAclEntryInfo(
                 _idObfuscator.Encode(e.Id), fileId, e.SubjectType, e.SubjectId,
-                (FilePermission)e.PermMask, e.GrantedBy ?? string.Empty, e.GrantedAt))
-            .ToList();
+                (FilePermission)e.PermMask, e.GrantedBy ?? string.Empty, e.GrantedAt))];
     }
 
     /// <inheritdoc />

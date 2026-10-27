@@ -3,17 +3,16 @@
  * 作者：SpeakHero（491960352@qq.com）
  * 版本：1.0.0 beta
  * 创建时间：2026-10-23 03:20:00 +08:00 中国标准时间 星期五
+ * 修改时间：2026-10-27 10:30:00 +08:00 中国标准时间 星期二
  * 描述：Support 文件中心 API Controller（/api/support/files）——Controller 层仅参数提取 + Service 调用 + 响应封装。
  *       路由/查询参数中的业务 Id 声明为 long，由全局 HashidsLongModelBinder 自动解码（Controller 不做编解码）。
  *       全部文件能力经 ISupportFileService 任务化提交（S18/D22 红线），控制器不直接触碰存储后端。
  */
 
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using OpenIddict.Validation.AspNetCore;
-using Qlx.Abstractions.Constants;
 using Qlx.Abstractions.Files;
+using Qlx.Abstractions.Constants;
 using Qlx.BuildingBlocks.Api;
 using Qlx.BuildingBlocks.Audit;
 using Qlx.Modules.Support.Services.Files;
@@ -24,7 +23,6 @@ namespace Qlx.Modules.Support.Controllers;
 /// 文件中心控制器。所有端点需租户级 Token（OpenIddict Validation Scheme），
 /// 路由经模块许可过滤（support.file.* 权限点）。
 /// </summary>
-[Authorize(AuthenticationSchemes = OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme)]
 [ApiController]
 [Route("api/support/files")]
 public sealed class FileController(
@@ -78,6 +76,7 @@ public sealed class FileController(
     /// <param name="id">文件 Id。</param>
     /// <param name="ct">取消令牌。</param>
     [HttpGet("download/{id}")]
+    [SkipApiResponseWrap]
     public async Task<IActionResult> Download(long id, CancellationToken ct)
     {
         var content = await fileService.OpenDownloadAsync(id, ct).ConfigureAwait(false);
@@ -91,6 +90,7 @@ public sealed class FileController(
     /// <param name="id">文件 Id。</param>
     /// <param name="ct">取消令牌。</param>
     [HttpGet("preview/{id}")]
+    [SkipApiResponseWrap]
     public async Task<IActionResult> Preview(long id, CancellationToken ct)
     {
         var content = await fileService.OpenPreviewAsync(id, ct).ConfigureAwait(false);
@@ -123,6 +123,14 @@ public sealed class FileController(
     [AuditOperation(QlxModuleCodes.Support, "FILE_RESTORE", "从回收站还原了文件", TargetType = "StorageObject", TargetIdParam = "id")]
     public async Task<ApiResponse<SupportFileMetadata>> Restore(long id, CancellationToken ct)
         => ApiResponse<SupportFileMetadata>.Ok(await fileService.RestoreAsync(id, ct));
+
+    /// <summary>回收站彻底删除（需 Delete 权限；物理清理，不可恢复）。</summary>
+    /// <param name="id">文件 Id。</param>
+    /// <param name="ct">取消令牌。</param>
+    [HttpDelete("{id}/purge")]
+    [AuditOperation(QlxModuleCodes.Support, "FILE_PURGE", "彻底删除了回收站文件", TargetType = "StorageObject", TargetIdParam = "id")]
+    public async Task<ApiResponse<SupportFileMetadata>> Purge(long id, CancellationToken ct)
+        => ApiResponse<SupportFileMetadata>.Ok(await fileService.PurgeAsync(id, ct));
 
     // ============ ACL 授权 ============
 

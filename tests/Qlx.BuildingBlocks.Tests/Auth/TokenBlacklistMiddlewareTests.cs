@@ -8,6 +8,7 @@
  */
 
 using System.Security.Claims;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -104,5 +105,45 @@ public sealed class TokenBlacklistMiddlewareTests
 
         Assert.Equal(StatusCodes.Status200OK, status);
         Assert.True(nextCalled);
+    }
+
+    [Fact]
+    public async Task UnauthenticatedIdentityCallsNext()
+    {
+        // Identity 存在但未认证（无 AuthenticationType → IsAuthenticated=false）→ 直通
+        var cache = CreateCache();
+        var services = new ServiceCollection().AddSingleton(cache).BuildServiceProvider();
+        var context = new DefaultHttpContext { RequestServices = services };
+        context.User = new ClaimsPrincipal(new ClaimsIdentity());
+
+        var (status, nextCalled) = await InvokeAsync(context, cache);
+
+        Assert.Equal(StatusCodes.Status200OK, status);
+        Assert.True(nextCalled);
+    }
+
+    [Fact]
+    public async Task BlankJtiCallsNextWithoutCacheLookup()
+    {
+        // jti 为空白串 → 视为无 jti，直通
+        var cache = CreateCache();
+        var (context, _) = BuildContext(cache, jti: "   ");
+
+        var (status, nextCalled) = await InvokeAsync(context, cache);
+
+        Assert.Equal(StatusCodes.Status200OK, status);
+        Assert.True(nextCalled);
+    }
+
+    [Fact]
+    public void UseTokenBlacklistRegistersMiddlewareAndRejectsNullBuilder()
+    {
+        var services = new ServiceCollection().BuildServiceProvider();
+        var builder = new ApplicationBuilder(services);
+
+        var returned = builder.UseTokenBlacklist();
+
+        Assert.Same(builder, returned);
+        _ = Assert.Throws<ArgumentNullException>(() => TokenBlacklistMiddlewareExtensions.UseTokenBlacklist(null!));
     }
 }

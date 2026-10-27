@@ -19,6 +19,8 @@
     <!-- 2F 打印：Scriban 模板引擎 + QRCoder 溯源二维码（RazorLight 在 .NET 10 运行时渲染失败，按方案 R2 预案选型；打印引擎公共组件归口 BuildingBlocks，Support 只组合） -->
     <PackageReference Include="Scriban" Version="6.2.1" />
     <PackageReference Include="QRCoder" Version="1.6.0" />
+    <!-- 集中式授权映射：convention 注入的 AuthorizeFilter 需携带 OpenIddict Validation scheme 常量 -->
+    <PackageReference Include="OpenIddict.Validation.AspNetCore" Version="7.7.2" />
     <PackageReference Include="StackExchange.Redis" Version="3.4.5" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.13" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.13" />

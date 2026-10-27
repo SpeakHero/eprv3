@@ -10,14 +10,6 @@
  * 通用
  * ============================================================ */
 
-/** 统一响应包装（对齐后端 Qlx.BuildingBlocks.Api.ApiResponse<T>）。 */
-export interface ApiResponse<T> {
-  success: boolean
-  code?: string | null
-  message?: string | null
-  data?: T
-}
-
 /** 分页结果（对齐后端各 Service 的分页契约，字段名按实际返回）。 */
 export interface SupportPage<T> {
   items: T[]
